@@ -1,0 +1,378 @@
+/*
+ * =====================================================================================
+ *       Copyright (c), 2013-2020, Prophet C&S.
+ *       Filename:  i2c_ltc2991.c
+ *
+ *    Description:  i2c驱动
+ *         Others:
+ *   
+ *        Version:  1.0
+ *        Date:  Sunday, November 10, 2013 01:57:08 HKT
+ *       Revision:  none
+ *       Compiler:  powerpc-gcc
+ *
+ *         Author:  housir , houwentaoff@gmail.com
+ *   Organization:  prophet
+ *        History:   Created by housir
+ *
+ * =====================================================================================
+ */
+#include <linux/module.h>
+#include <linux/moduleparam.h>
+#include <linux/init.h>
+
+#include <linux/kernel.h>  
+#include <linux/slab.h>   
+#include <linux/fs.h>       
+#include <linux/errno.h>   
+#include <linux/types.h>   
+#include <linux/mm.h>
+#include <linux/kdev_t.h>
+#include <linux/cdev.h>
+#include <linux/i2c.h>
+#include <linux/delay.h>
+#include <linux/device.h>
+
+#include "i2c_ltc2991.h"
+
+#define    LCT2991_MINOR  0 /*  */ 
+#define LCT2991_MAJOR    250            /*  */
+
+
+static int lct2991_major = LCT2991_MAJOR;
+static int number_of_devices = 1;
+
+
+enum chips { lct2991 };
+/*
+ * Addresses to scan
+ * LCT2991 have address 0x4d or 0x4b.
+ */
+
+static const unsigned short normal_i2c[] = { 0x4d, I2C_CLIENT_END };
+I2C_CLIENT_INSMOD;
+
+
+/*
+ * Driver data (common to all clients)
+ */
+
+static const struct i2c_device_id lct2991_idtable[] = {
+	{ "lct2991", lct2991 },
+	{ }
+};
+MODULE_DEVICE_TABLE(i2c, lct2991_idtable);/*housir:  MODULE_DEVICE_TABLE宏是用来生成i2c_device_id。在legacy方式中i2c_client是自己创建的，而此处的i2c_client如何得到？实际上是在 i2c_register_board_info函数注册i2c_board_info过程中构建的 */
+
+static int __devinit lct2991_probe(struct i2c_client *client,
+                      const struct i2c_device_id *id);
+static int lct2991_remove(struct i2c_client *client);
+
+
+/*
+ * Driver data (common to all clients)
+ */
+static struct i2c_driver lct2991_i2c_driver = {
+//	.class		= I2C_CLASS_HWMON,
+	.driver = {
+		.name	= "lct2991",
+//        .owner = THIS_MODULE,
+	},
+	.probe		= lct2991_probe,
+	.remove		= lct2991_remove,
+	.id_table	= lct2991_idtable,
+//	.detect		= lct2991_detect,/*housir:  注销呢?*/
+	.address_list	= normal_i2c,
+//    .command    = NULL,/*housir: optional, deprecated */
+};
+/*
+ * Client data (each client gets its own)
+ */
+
+struct lct2991_data {
+    struct i2c_client *client;
+    int users;// how many users using the driver
+}*pstlct2991_data;
+
+static struct i2c_client *new_client = NULL;
+
+static struct cdev i2c_lct2991_dev;
+
+static dev_t devno = 0;
+#if 0
+static struct i2c_board_info i2c_devs0[] __initdata = {                                                                                             
+                    {I2C_BOARD_INFO("lct2991", 0x4d),},                                                                                             
+};
+#endif
+int lct2991_open (struct inode *inode, struct file *filp)
+{
+    printk("===> %s\n", __func__);
+	return 0;
+}
+
+ssize_t lct2991_read(struct file *file, char __user *buff, size_t count, loff_t *offp)
+{
+    printk("===> %s\n", __func__);
+	return 0;
+}
+
+ssize_t lct2991_write(struct file *file, const char __user *buff, size_t count, loff_t *offp)
+{
+    printk("===> %s\n", __func__);
+	return 0;
+}
+
+#if 0
+static int lct2991_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
+{
+	switch ( cmd ) {
+		default:
+			{
+				break;
+			}
+	}
+	return 0;
+}
+#endif
+static int lct2991_release(struct inode *node, struct file *file)
+{    
+    printk("===> %s\n", __func__);
+
+	return 0;
+}
+
+static struct file_operations lct2991_i2c_fops = {
+	.owner   = THIS_MODULE,
+	.open    = lct2991_open,
+	.release = lct2991_release,
+	.read    = lct2991_read,
+	.write   = lct2991_write,
+//	.ioctl   = lct2991_ioctl,	
+};
+
+extern int i2c_master_send(const struct i2c_client *client, const char *buf, int count);
+extern int i2c_master_recv(const struct i2c_client *client, char *buf, int count);
+
+static int __devinit lct2991_probe(struct i2c_client *client,
+		      const struct i2c_device_id *id)
+{
+    int ret = 0;
+//    struct lct2991_data *stpdata;
+
+    printk("===> %s\n", __func__);
+
+    new_client = client;
+    devno = MKDEV(lct2991_major, LCT2991_MINOR);
+    if (lct2991_major)
+    {
+        ret = register_chrdev_region(devno, number_of_devices, "lct2991");
+    }
+	else
+    {
+		ret = alloc_chrdev_region(&devno, 0, number_of_devices, "lct2991");
+		lct2991_major = MAJOR(devno);
+	}
+
+
+    if(ret)
+    {
+        printk("failed to register lct2991 i2c device number\n");
+        goto err_register_chrdev_region;
+    }
+    cdev_init(&i2c_lct2991_dev, &lct2991_i2c_fops);
+
+    i2c_lct2991_dev.owner = THIS_MODULE;
+
+
+    ret = cdev_add(&i2c_lct2991_dev, devno, number_of_devices);
+    if(ret)
+    {
+        printk("failed to add  lct2991 i2c  device\n");
+        goto err_cdev_add;
+    }
+
+    printk("<=== %s\n", __func__);
+
+    return 0;
+err_cdev_add:
+    unregister_chrdev_region(devno, number_of_devices);
+err_register_chrdev_region:
+//    kfree(pstdata);
+    printk(KERN_ERR " lct2991 err_register_chrdev_region !\n");
+    return ret;    
+}
+
+ /**
+ * @brief Write a byte of data to register specified by "command"
+ *
+ * @param address 7位I2C 器件的地址
+ * @param command 	Command byte 
+ * @param value   Byte to be written
+ *
+ * @return 成功返回0 失败返回-1
+ */
+int8_t i2c_write_byte_data(uint8_t address, uint8_t command, uint8_t value)
+{
+    int ret=0;
+    unsigned char buffer[2];
+    buffer[0] = command;
+    buffer[1] = value;
+
+    new_client->addr = address;/*housir: new_client需要在外面申请 */
+    if (2!= i2c_master_send(new_client,buffer,2) )
+    {
+        printk("lct2991 i2c write byte fail!\n");
+        return -1;
+    }
+    return 0;
+}
+EXPORT_SYMBOL(i2c_write_byte_data);
+
+/**
+ * @brief 写一个字16位，ADC中寄存器的读取需要
+ *
+ * @param address  7位I2C 器件的地址
+ * @param command  Command byte 
+ * @param value    Word to be written
+ *
+ * @return  成功返回0 失败返回-1
+ */
+int8_t i2c_write_word_data(uint8_t address, uint8_t command, uint16_t value)
+{
+    union
+    {
+        uint8_t buf[2];
+        uint16_t word;
+    } data;
+    data.word = value;
+//    printk("");
+    new_client->addr = address;/* */
+    if (2!= i2c_master_send(new_client, &data, 2) )
+    {
+        printk("lct2991 i2c write word fail!\n");
+        return -1;
+    }
+    return 0;
+}
+EXPORT_SYMBOL(i2c_write_word_data);
+
+/**
+ * @brief Read a byte, store in "value".
+ *
+ * @param address 7-bit I2C address 
+ * @param command byte
+ * @param value Byte to be read
+ *
+ * @return 0 on success, -1 on failure 
+ */
+int8_t i2c_read_byte_data(uint8_t address, uint8_t command, uint8_t *value)
+{
+    printk("===> %s\n", __func__);
+    printk("command ===> %d\n", command);
+
+    new_client->addr = address;/* */
+
+    /*write reg addr  */
+    if( 1!= i2c_master_send(new_client, command, 1) )
+    {
+        printk( KERN_ERR " lct2991_i2c_read byte fail!:i2c_master_send \n" );
+        return -1;
+    }
+    /*housir: wait 一个周期长多少？ */
+//    msleep(10);
+
+    /*read */
+    if( 1!= i2c_master_recv(new_client, value, 1) )
+    {
+        printk( KERN_ERR " lct2991_i2c_read byte fail!:i2c_master_recv \n" );
+        return -1;
+    }
+
+    printk("<=== %s\n", __func__);
+
+    return 0;
+}
+EXPORT_SYMBOL(i2c_read_byte_data);
+
+/**
+ * @brief Read a 16-bit word of data from register specified by "command". 
+ *
+ * @param address 	7-bit I2C address 
+ * @param command   Command byte 
+ * @param value     Word to be read 
+ *
+ * @return 0 on success, -1 on failure 
+ */
+int8_t i2c_read_word_data(uint8_t address, uint8_t command, uint16_t *value)
+{
+#if 0
+    union
+    {
+        uint8_t buf[2];
+        uint16_t word;
+    } data;
+    data.word = 0;
+#endif
+
+    new_client->addr = address;/* */
+    /*write reg addr  */
+    if( 1!= i2c_master_send(new_client, command, 1) )
+    {
+        printk( KERN_ERR " lct2991_i2c_read word fail! :master_send\n" );
+        return -1;
+    }
+    /*housir: wait 一个周期长多少？ */
+//    msleep(10);
+
+    /*read */
+    if( 2!= i2c_master_recv(new_client, value, 2) )
+    {
+        printk( KERN_ERR " lct2991_i2c_read word fail! :master_recv\n" );
+        return -1;
+    }
+
+    return 0;
+}
+EXPORT_SYMBOL(i2c_read_word_data);
+
+static int lct2991_remove(struct i2c_client *client)
+{
+    printk("===> %s\n", __func__);
+
+    cdev_del(&i2c_lct2991_dev);
+    unregister_chrdev_region(devno, number_of_devices);
+	printk("lct2991_i2c device uninstalled\n");
+    
+    return 0;
+}
+
+static int __init lct2991_init(void)
+{      
+    int ret=0;
+
+    printk("===> %s\n", __func__);
+
+//    i2c_register_board_info(0, i2c_devs0, ARRAY_SIZE(i2c_devs0));/*housir:  没有这个设备，则需要提前注册上*/   
+    /*housir: 将name和id_table 上报: i2c_add_driver会将驱动注册到总线上，（2）探测到i2c设备就会调用at24c02_probe， （3）探测主要是用i2c_match_id函数比较client的名字和id_table中名字，如果相等，则探测到i2c设备 */
+    ret =  i2c_add_driver(&lct2991_i2c_driver);
+
+    printk("return by i2c_add_driver === %d\n", ret);
+    printk("<=== %s\n", __func__);
+//    return i2c_add_driver(&lct2991_i2c_driver);
+    return ret;
+}
+ 
+static void __exit lct2991_exit(void)
+{
+    printk("===> %s\n", __func__);
+    i2c_del_driver(&lct2991_i2c_driver);
+}
+
+
+module_init(lct2991_init);
+module_exit(lct2991_exit);
+
+//module_i2c_driver(lct2991_i2c_driver);
+
+MODULE_AUTHOR("housir <houwentaoff@gmail.com>");
+MODULE_DESCRIPTION("LCT2991 driver");
+MODULE_LICENSE("GPL");
