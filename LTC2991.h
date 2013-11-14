@@ -172,7 +172,8 @@ extern const  /*housir:  float*/ int LTC2991_DIODE_VOLTAGE_lsb;
 //! Uncomment LTC2991_I2C_ADDRESS to match demo board configuration.
 //  Address assignment
 // LTC2991 I2C Address                //  AD2       AD1       AD0
-#define LTC2991_I2C_ADDRESS 0x4D      //  Low       Low       Low
+#define LTC2991_I2C_TEMP_ADDRESS 0x4D      //  Low       Low       Low
+#define LTC2991_I2C_V_ADDRESS 0x4B      //  Low       Low       Low
 // #define LTC2991_I2C_ADDRESS 0x49    //  Low       Low       High
 // #define LTC2991_I2C_ADDRESS 0x4A    //  Low       High      Low
 // #define LTC2991_I2C_ADDRESS 0x4B    //  Low       High      High

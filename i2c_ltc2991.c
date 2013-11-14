@@ -43,13 +43,13 @@ static int lct2991_major = LCT2991_MAJOR;
 static int number_of_devices = 1;
 
 
-enum chips { lct2991 };
+enum chips { lct2991_temp, lct2991_v};
 /*
  * Addresses to scan
  * LCT2991 have address 0x4d or 0x4b.
  */
 
-static const unsigned short normal_i2c[] = { 0x4d, I2C_CLIENT_END };
+static const unsigned short normal_i2c[] = { 0x4d, 0x4b, I2C_CLIENT_END };
 I2C_CLIENT_INSMOD;
 
 
@@ -58,7 +58,8 @@ I2C_CLIENT_INSMOD;
  */
 
 static const struct i2c_device_id lct2991_idtable[] = {
-	{ "lct2991", lct2991 },
+	{ "lct2991", lct2991_temp },
+	{ "lct2991_v", lct2991_v },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, lct2991_idtable);/*housir:  MODULE_DEVICE_TABLE宏是用来生成i2c_device_id。在legacy方式中i2c_client是自己创建的，而此处的i2c_client如何得到？实际上是在 i2c_register_board_info函数注册i2c_board_info过程中构建的 */
@@ -217,12 +218,34 @@ int8_t i2c_write_byte_data(uint8_t address, uint8_t command, uint8_t value)
     buffer[0] = command;
     buffer[1] = value;
 
-    new_client->addr = address;/*housir: new_client需要在外面申请 */
+    struct i2c_msg msgs[] = {
+        {
+            .addr  = address,
+            .flags = 0,
+            .len   = 2,
+            .buf   = buffer,
+        },
+    };
+
+    printk("===> %s\n", __func__);
+    printk("command ===> 0x%x\n", command);
+
+    new_client->addr = address;/* */
+
+    ret = i2c_transfer(new_client->adapter, msgs, 1);    
+    
+    if(ret < 0 )
+    {
+        printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
+        return -1;
+    }
+#if 0
     if (2!= i2c_master_send(new_client,buffer,2) )
     {
         printk("lct2991 i2c write byte fail!\n");
         return -1;
     }
+#endif
     return 0;
 }
 EXPORT_SYMBOL(i2c_write_byte_data);
@@ -238,6 +261,35 @@ EXPORT_SYMBOL(i2c_write_byte_data);
  */
 int8_t i2c_write_word_data(uint8_t address, uint8_t command, uint16_t value)
 {
+    uint8_t buf[3];
+    int ret=0;
+
+    struct i2c_msg msgs[] = {
+        {
+            .addr  = address,
+            .flags = 0,
+            .len   = 3,
+            .buf   = buf,
+        },
+    };
+
+    buf[0] = command;
+    buf[1] = (uint8_t)value>>8;/*housir: 大端模式 */
+    buf[2] = value & 0x00ff;/*housir: 大端 */
+
+    printk("===> %s\n", __func__);
+    printk("command ===> 0x%x\n", command);
+
+
+    new_client->addr = address;/* */
+
+    ret = i2c_transfer(new_client->adapter, msgs, 1);    
+    if(ret < 0 )
+    {
+        printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
+        return -1;
+    }
+#if 0
     union
     {
         uint8_t buf[2];
@@ -251,7 +303,8 @@ int8_t i2c_write_word_data(uint8_t address, uint8_t command, uint16_t value)
         printk("lct2991 i2c write word fail!\n");
         return -1;
     }
-    return 0;
+#endif
+    return ret;
 }
 EXPORT_SYMBOL(i2c_write_word_data);
 
@@ -266,11 +319,36 @@ EXPORT_SYMBOL(i2c_write_word_data);
  */
 int8_t i2c_read_byte_data(uint8_t address, uint8_t command, uint8_t *value)
 {
+    int ret = 0;
+    struct i2c_msg msgs[] = {
+        {
+            .addr  = address,
+            .flags = 0,
+            .len   = 1,
+            .buf   = &command,
+        },
+        {
+            .addr  = address,
+            .flags = I2C_M_RD,
+            .len   = 1,
+            .buf   = value,
+        },
+    };
+
     printk("===> %s\n", __func__);
-    printk("command ===> %d\n", command);
+    printk("command ===> 0x%x\n", command);
+
 
     new_client->addr = address;/* */
 
+    ret = i2c_transfer(new_client->adapter, msgs, 2);
+
+    if(ret < 0 )
+    {
+        printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
+        return -1;
+    }
+#if 0
     /*write reg addr  */
     if( 1!= i2c_master_send(new_client, command, 1) )
     {
@@ -278,7 +356,7 @@ int8_t i2c_read_byte_data(uint8_t address, uint8_t command, uint8_t *value)
         return -1;
     }
     /*housir: wait 一个周期长多少？ */
-//    msleep(10);
+    msleep(10);
 
     /*read */
     if( 1!= i2c_master_recv(new_client, value, 1) )
@@ -286,7 +364,7 @@ int8_t i2c_read_byte_data(uint8_t address, uint8_t command, uint8_t *value)
         printk( KERN_ERR " lct2991_i2c_read byte fail!:i2c_master_recv \n" );
         return -1;
     }
-
+#endif
     printk("<=== %s\n", __func__);
 
     return 0;
@@ -312,7 +390,36 @@ int8_t i2c_read_word_data(uint8_t address, uint8_t command, uint16_t *value)
     } data;
     data.word = 0;
 #endif
+    int ret=0;
+    struct i2c_msg msgs[] = {
+        {
+            .addr  = address,
+            .flags = 0,
+            .len   = 1,
+            .buf   = &command,
+        },
+        {
+            .addr  = address,
+            .flags = I2C_M_RD,
+            .len   = 2,
+            .buf   = value,
+        },
+    };
 
+    printk("===> %s\n", __func__);
+    printk("command ===> 0x%x\n", command);
+
+
+    new_client->addr = address;/* */
+
+    i2c_transfer(new_client->adapter, msgs, 2);
+
+    if(ret < 0 )
+    {
+        printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
+        return -1;
+    }
+#if 0
     new_client->addr = address;/* */
     /*write reg addr  */
     if( 1!= i2c_master_send(new_client, command, 1) )
@@ -329,8 +436,8 @@ int8_t i2c_read_word_data(uint8_t address, uint8_t command, uint16_t *value)
         printk( KERN_ERR " lct2991_i2c_read word fail! :master_recv\n" );
         return -1;
     }
-
-    return 0;
+#endif
+    return ret;
 }
 EXPORT_SYMBOL(i2c_read_word_data);
 

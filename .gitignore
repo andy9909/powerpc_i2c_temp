@@ -1,0 +1,13 @@
+*.symvers
+*.order
+*.ko
+*~
+tags
+cscope*
+*.soc
+*.[ao]
+log
+.*
+!.gitignore
+*.swp
+*.bak
