@@ -105,6 +105,8 @@ static int CreatThreadMain(void *v_ptr)
 
     temp_pos = pos;
 	/*在此完成一些初始化动作*/
+/*housir: 一次设置多次读取,是不是采集到的值太早，设置的太过频繁，导致读出的 数据为0 */
+    LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CONTROL_V5678_REG, LTC2991_V7_V8_TEMP_ENABLE, 0x00);
 
 	while(1)
 	{
@@ -142,7 +144,6 @@ static int CreatThreadMain(void *v_ptr)
 #if 1  /*housir:  读所有温度和电压值;*/
         /*Read temperature from diode connected to V7-V8.*/
         /* Enable temperature mode.*/
-        ack = LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CONTROL_V5678_REG, LTC2991_V7_V8_TEMP_ENABLE, 0x00);
 
         /* Flush one ADC reading in case it is stale.  Then, take a new fresh reading.*/
         ack = LTC2991_adc_read_new_data(LTC2991_I2C_TEMP_ADDRESS, LTC2991_V7_MSB_REG, &stsensor.adc_code, &data_valid, LTC2991_TIMEOUT);

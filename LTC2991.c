@@ -73,11 +73,22 @@ int8_t LTC2991_adc_read(uint8_t i2c_address, uint8_t msb_register_address, int16
 {
   int8_t ack = 0;
   uint16_t code;
+
+  printk("===> %s\n", __func__);
+  printk("i2c_address === 0x%x reg_addr === 0x%x\n", i2c_address, msb_register_address);
+
   ack = i2c_read_word_data(i2c_address, msb_register_address, &code);
+  
+  printk("code === 0x%x\n", code);
   
   *data_valid = (code >> 15) & 0x01;   // Place Data Valid Bit in *data_valid
   
   *adc_code = code & 0x7FFF;  // Removes data valid bit to return proper adc_code value
+
+  printk("adc_code === 0x%x\n", adc_code);
+
+  printk("<=== %s\n", __func__);
+
   
   return(ack);
 }
@@ -91,6 +102,7 @@ int8_t LTC2991_adc_read_timeout(uint8_t i2c_address, uint8_t msb_register_addres
   int8_t ack = 0;
   uint16_t timer_count;  // Timer count for data_valid
 
+  printk("===> %s\n", __func__);
   for (timer_count = 0; timer_count < timeout; timer_count++)
   {
     ack |= LTC2991_adc_read(i2c_address, msb_register_address, &(*adc_code), &(*data_valid));   //! 1)Read ADC until data valid bit is set
@@ -98,6 +110,8 @@ int8_t LTC2991_adc_read_timeout(uint8_t i2c_address, uint8_t msb_register_addres
 //    delay(1);
     msleep(1);
   }
+  printk("adc timeout................%d\n", timer_count);
+  printk("<=== %s\n", __func__);
   return(ack);
 }
 
@@ -113,7 +127,12 @@ int8_t LTC2991_adc_read_new_data(uint8_t i2c_address, uint8_t msb_register_addre
   printk("===> %s\n", __func__);
 
   ack |= LTC2991_adc_read(i2c_address, msb_register_address, &(*adc_code), &(*data_valid)); //! 1)  Throw away old data
+
+  printk("old data data_valid ===> 0x%x\n", *data_valid);
+
   ack |= LTC2991_adc_read_timeout(i2c_address, msb_register_address, &(*adc_code), &(*data_valid), timeout); //! 2) Read new data
+
+  printk("new data data_valid ===> 0x%x\n", *data_valid);
 
   printk("<=== %s\n", __func__);
 
@@ -141,8 +160,13 @@ int8_t LTC2991_register_read(uint8_t i2c_address, uint8_t register_address, uint
 int8_t LTC2991_register_write(uint8_t i2c_address, uint8_t register_address, uint8_t register_data)
 {
   int8_t ack = 0;
+
+  printk("===> %s\n", __func__);
   
   ack = i2c_write_byte_data(i2c_address, register_address, register_data);
+
+  printk("<=== %s\n", __func__);
+
   return(ack);
 }
 

@@ -415,7 +415,8 @@ int8_t i2c_read_word_data(uint8_t address, uint8_t command, uint16_t *value)
     new_client->addr = address;/* */
 
     i2c_transfer(new_client->adapter, msgs, 2);
-    printk("address ===> 0x%x\n value ===> 0x%x\n", address, *value);
+    printk("address === 0x%x\n value === 0x%x\n", address, *value);
+    printk("msg[1].buf === 0x%x\n ", msgs[1].buf);
 
     if(ret < 0 )
     {
