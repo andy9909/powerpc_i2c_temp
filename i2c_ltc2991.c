@@ -35,7 +35,7 @@
 
 #include "i2c_ltc2991.h"
 
-#define    LCT2991_MINOR  0 /*  */ 
+#define    LCT2991_MINOR  222 /*  */ 
 #define LCT2991_MAJOR    250            /*  */
 
 
@@ -59,7 +59,6 @@ I2C_CLIENT_INSMOD;
 
 static const struct i2c_device_id lct2991_idtable[] = {
 	{ "lct2991", lct2991_temp },
-	{ "lct2991_v", lct2991_v },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, lct2991_idtable);/*housir:  MODULE_DEVICE_TABLE宏是用来生成i2c_device_id。在legacy方式中i2c_client是自己创建的，而此处的i2c_client如何得到？实际上是在 i2c_register_board_info函数注册i2c_board_info过程中构建的 */
@@ -166,11 +165,13 @@ static int __devinit lct2991_probe(struct i2c_client *client,
     if (lct2991_major)
     {
         ret = register_chrdev_region(devno, number_of_devices, "lct2991");
+        printk("ret manual === %d \n", ret);
     }
 	else
     {
 		ret = alloc_chrdev_region(&devno, 0, number_of_devices, "lct2991");
 		lct2991_major = MAJOR(devno);
+        printk("ret auto get devno=== %d \n", ret);
 	}
 
 
@@ -342,6 +343,7 @@ int8_t i2c_read_byte_data(uint8_t address, uint8_t command, uint8_t *value)
     new_client->addr = address;/* */
 
     ret = i2c_transfer(new_client->adapter, msgs, 2);
+    printk("address ===> 0x%x\n value ===> 0x%x\n", address, *value);
 
     if(ret < 0 )
     {
@@ -407,12 +409,13 @@ int8_t i2c_read_word_data(uint8_t address, uint8_t command, uint16_t *value)
     };
 
     printk("===> %s\n", __func__);
-    printk("command ===> 0x%x\n", command);
+    printk("address ===> 0x%x\n command ===> 0x%x\n", address, command);
 
 
     new_client->addr = address;/* */
 
     i2c_transfer(new_client->adapter, msgs, 2);
+    printk("address ===> 0x%x\n value ===> 0x%x\n", address, *value);
 
     if(ret < 0 )
     {

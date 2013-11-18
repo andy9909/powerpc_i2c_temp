@@ -125,7 +125,7 @@ static int CreatThreadMain(void *v_ptr)
 		/*完成电压监控从LTC2991读取6路电压写入fpga寄存器*/
 
         i2c_write_byte_data(0x4d, LTC2991_CONTROL_V5678_REG, write_value);
-//        msleep(100);
+        msleep(100);
         i2c_read_byte_data(0x4d, LTC2991_CONTROL_V5678_REG, &value);
 
         printk("slave addr:0x4d reg:0x07: write_value %d \n read value == %d\n", write_value, value);
@@ -139,13 +139,13 @@ static int CreatThreadMain(void *v_ptr)
         value = 0;
         write_value++;
 #endif
-#if 0  /*housir:  读所有温度和电压值;*/
+#if 1  /*housir:  读所有温度和电压值;*/
         /*Read temperature from diode connected to V7-V8.*/
         /* Enable temperature mode.*/
-        ack = LTC2991_register_set_clear_bits(LTC2991_I2C_ADDRESS, LTC2991_CONTROL_V5678_REG, LTC2991_V7_V8_TEMP_ENABLE, 0x00);
+        ack = LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CONTROL_V5678_REG, LTC2991_V7_V8_TEMP_ENABLE, 0x00);
 
         /* Flush one ADC reading in case it is stale.  Then, take a new fresh reading.*/
-        ack = LTC2991_adc_read_new_data(LTC2991_I2C_ADDRESS, LTC2991_V7_MSB_REG, &stsensor.adc_code, &data_valid, LTC2991_TIMEOUT);
+        ack = LTC2991_adc_read_new_data(LTC2991_I2C_TEMP_ADDRESS, LTC2991_V7_MSB_REG, &stsensor.adc_code, &data_valid, LTC2991_TIMEOUT);
 
         /* Converts code to temperature from adc code and temperature lsb */
         temperature = LTC2991_temperature(stsensor.adc_code, LTC2991_TEMPERATURE_lsb, 1);
@@ -163,7 +163,7 @@ static int CreatThreadMain(void *v_ptr)
         temperature = 0;
         stsensor.adc_code = 0;
 #endif       
-
+#if 0
         for (index = 0;index < SENSOR_T_MAX_NUM;index++)
         {
             /*Read temperature from diode connected to V1-V2 V3-V4 V5-V6 V7-V8.*/
@@ -191,6 +191,7 @@ static int CreatThreadMain(void *v_ptr)
             vn_msb_reg_base += 0x04;/*housir: V1 3 5 7 之间的MSB基地址偏移量 */
 
         }
+#endif
 #if 0
 /*Read single-ended voltage from V1.*/
 
@@ -202,6 +203,7 @@ static int CreatThreadMain(void *v_ptr)
 
     voltage = LTC2991_code_to_single_ended_voltage(code, LTC2991_SINGLE_ENDED_lsb); // Converts code to voltage from single-ended lsb
 #endif
+#if 0
 /*Read single-ended voltage from V1.*/
 
     vn_msb_reg_base = LTC2991_V1_MSB_REG;
@@ -219,7 +221,7 @@ static int CreatThreadMain(void *v_ptr)
 
     }
 
-		
+#endif		
 	}
 	return 0;
 }

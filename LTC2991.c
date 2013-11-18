@@ -129,7 +129,7 @@ int8_t LTC2991_register_read(uint8_t i2c_address, uint8_t register_address, uint
 
   ack = i2c_read_byte_data(i2c_address, register_address, register_data);
 
-  printk("i2c_address === [%x] Reg_addr=== [%x] Reg_data === [%x]\n", i2c_address, register_address, register_data);
+  printk("i2c_address === [%x] Reg_addr=== [%x] Reg_data === [%x]\n", i2c_address, register_address, *register_data);
 
   printk("<=== %s\n", __func__);
 
