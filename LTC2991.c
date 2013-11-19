@@ -73,21 +73,26 @@ int8_t LTC2991_adc_read(uint8_t i2c_address, uint8_t msb_register_address, int16
 {
   int8_t ack = 0;
   uint16_t code;
+  uint8_t ret_8bitcode = 0;
 
-  printk("===> %s\n", __func__);
-  printk("i2c_address === 0x%x reg_addr === 0x%x\n", i2c_address, msb_register_address);
+//  printk("===> %s\n", __func__);
+//  printk("i2c_address === [0x%x] reg_addr === [0x%x]\n", i2c_address, msb_register_address);
 
+//  printk("===> .....................code read byte! [0x%x]\n", ret_8bitcode);
+  //ack = i2c_read_word_data(i2c_address, msb_register_address, &code);
+//  i2c_read_byte_data(i2c_address, msb_register_address, &ret_8bitcode);
+//  printk("<=== .....................code read byte![0x%x]\n", ret_8bitcode);
   ack = i2c_read_word_data(i2c_address, msb_register_address, &code);
   
-  printk("code === 0x%x\n", code);
+//  printk("code === [0x%x]\n", code);
   
   *data_valid = (code >> 15) & 0x01;   // Place Data Valid Bit in *data_valid
   
   *adc_code = code & 0x7FFF;  // Removes data valid bit to return proper adc_code value
 
-  printk("adc_code === 0x%x\n", adc_code);
+//  printk("data_valid === [0x%x] adc_code === [0x%x]\n", *data_valid, *adc_code);
 
-  printk("<=== %s\n", __func__);
+//  printk("<=== %s\n", __func__);
 
   
   return(ack);
@@ -102,16 +107,22 @@ int8_t LTC2991_adc_read_timeout(uint8_t i2c_address, uint8_t msb_register_addres
   int8_t ack = 0;
   uint16_t timer_count;  // Timer count for data_valid
 
-  printk("===> %s\n", __func__);
+  printk("===> .............%s\n", __func__);
+  printk("timeout === [%d]ms\n", timeout);
   for (timer_count = 0; timer_count < timeout; timer_count++)
   {
     ack |= LTC2991_adc_read(i2c_address, msb_register_address, &(*adc_code), &(*data_valid));   //! 1)Read ADC until data valid bit is set
-    if ((!ack) || (*data_valid == 1)) break;
+//    if ((!ack) || (*data_valid == 1)) break;
+    if ( (*data_valid == 1)) 
+    {
+        printk("<===>new data has in it!!!!!!!!!!!\n");
+        break;
+    }
 //    delay(1);
     msleep(1);
   }
   printk("adc timeout................%d\n", timer_count);
-  printk("<=== %s\n", __func__);
+  printk("<=== ..............%s\n", __func__);
   return(ack);
 }
 
@@ -244,6 +255,7 @@ int LTC2991_temperature(int16_t adc_code, /*housir:  float*/int LTC2991_temperat
 {
 //  float 
   int temperature;
+
   adc_code = (adc_code & 0x1FFF);                               //! 1) Removes first 3 bits
   if(!unit){                                                     //! 2)Checks to see if it's Kelvin
     if(adc_code >>12)

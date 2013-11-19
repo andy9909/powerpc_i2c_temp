@@ -59,6 +59,7 @@ I2C_CLIENT_INSMOD;
 
 static const struct i2c_device_id lct2991_idtable[] = {
 	{ "lct2991", lct2991_temp },
+	{ "lct2991", lct2991_v },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, lct2991_idtable);/*housir:  MODULE_DEVICE_TABLE宏是用来生成i2c_device_id。在legacy方式中i2c_client是自己创建的，而此处的i2c_client如何得到？实际上是在 i2c_register_board_info函数注册i2c_board_info过程中构建的 */
@@ -229,16 +230,23 @@ int8_t i2c_write_byte_data(uint8_t address, uint8_t command, uint8_t value)
     };
 
     printk("===> %s\n", __func__);
-    printk("command ===> 0x%x\n", command);
+    printk("addr ===> 0x%x command ===> 0x%x value ===> 0x%x\n", address, command, value);
 
     new_client->addr = address;/* */
 
     ret = i2c_transfer(new_client->adapter, msgs, 1);    
+    printk("ret ===> 0x%x\n", ret);
+
+    printk("<=== %s\n", __func__);
     
     if(ret < 0 )
     {
         printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
         return -1;
+    }
+    else
+    {
+        return 0;
     }
 #if 0
     if (2!= i2c_master_send(new_client,buffer,2) )
@@ -289,6 +297,10 @@ int8_t i2c_write_word_data(uint8_t address, uint8_t command, uint16_t value)
     {
         printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
         return -1;
+    }
+    else
+    {
+        return 0;
     }
 #if 0
     union
@@ -345,10 +357,16 @@ int8_t i2c_read_byte_data(uint8_t address, uint8_t command, uint8_t *value)
     ret = i2c_transfer(new_client->adapter, msgs, 2);
     printk("address ===> 0x%x\n value ===> 0x%x\n", address, *value);
 
+    printk("<=== %s\n", __func__);
+
     if(ret < 0 )
     {
         printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
         return -1;
+    }
+    else
+    {
+        return 0;
     }
 #if 0
     /*write reg addr  */
@@ -367,7 +385,6 @@ int8_t i2c_read_byte_data(uint8_t address, uint8_t command, uint8_t *value)
         return -1;
     }
 #endif
-    printk("<=== %s\n", __func__);
 
     return 0;
 }
@@ -408,20 +425,24 @@ int8_t i2c_read_word_data(uint8_t address, uint8_t command, uint16_t *value)
         },
     };
 
-    printk("===> %s\n", __func__);
-    printk("address ===> 0x%x\n command ===> 0x%x\n", address, command);
+//    printk("===> %s\n", __func__);
+//    printk("address ===> 0x%x\n command ===> 0x%x\n", address, command);
 
 
     new_client->addr = address;/* */
 
-    i2c_transfer(new_client->adapter, msgs, 2);
-    printk("address === 0x%x\n value === 0x%x\n", address, *value);
-    printk("msg[1].buf === 0x%x\n ", msgs[1].buf);
+    ret = i2c_transfer(new_client->adapter, msgs, 2);
+//    printk("address === 0x%x\n value === 0x%x\n", address, *value);
+//    printk("msg[1].buf === 0x%x\n ", *(msgs[1].buf));
 
     if(ret < 0 )
     {
         printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
         return -1;
+    }
+    else
+    {
+        return 0;
     }
 #if 0
     new_client->addr = address;/* */

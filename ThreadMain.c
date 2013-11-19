@@ -104,10 +104,36 @@ static int CreatThreadMain(void *v_ptr)
     pos = (uint8_t *)ioremap(FPGA_READ_ADDR, FPGA_READ_SIZE);
 
     temp_pos = pos;
+#if 1  
 	/*在此完成一些初始化动作*/
 /*housir: 一次设置多次读取,是不是采集到的值太早，设置的太过频繁，导致读出的 数据为0 */
-    LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CONTROL_V5678_REG, LTC2991_V7_V8_TEMP_ENABLE, 0x00);
+    i2c_read_byte_data(0x4d, LTC2991_CONTROL_V5678_REG, &value);
+    printk("before set LTC2991_CONTROL_V5678_REG %d\n", value);
+    value = 0;
+    LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CONTROL_V5678_REG, 
+            LTC2991_V7_V8_TEMP_ENABLE | LTC2991_V5_V6_TEMP_ENABLE, 0x00);
+    i2c_read_byte_data(0x4d, LTC2991_CONTROL_V5678_REG, &value);
+    printk("after set LTC2991_CONTROL_V5678_REG %d\n", value);
 
+    value = 0;
+    i2c_read_byte_data(0x4d, LTC2991_CONTROL_V1234_REG, &value);
+    printk("before set LTC2991_CONTROL_V1234_REG %d\n", value);
+    value = 0;
+    LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CONTROL_V1234_REG, 
+            LTC2991_V1_V2_TEMP_ENABLE | LTC2991_V3_V4_TEMP_ENABLE, 0x00);
+    i2c_read_byte_data(0x4d, LTC2991_CONTROL_V1234_REG, &value);
+    printk("after set LTC2991_CONTROL_V1234_REG %d\n", value);
+
+#endif
+    ack |= LTC2991_register_set_clear_bits(LTC2991_I2C_V_ADDRESS, LTC2991_CONTROL_V1234_REG, 0x00, LTC2991_V1_V2_DIFFERENTIAL_ENABLE | LTC2991_V1_V2_TEMP_ENABLE | LTC2991_V3_V4_DIFFERENTIAL_ENABLE | LTC2991_V3_V4_TEMP_ENABLE );
+
+    ack |= LTC2991_register_set_clear_bits(LTC2991_I2C_V_ADDRESS, LTC2991_CONTROL_V5678_REG, 0x00, LTC2991_V5_V6_DIFFERENTIAL_ENABLE | LTC2991_V5_V6_TEMP_ENABLE | LTC2991_V7_V8_DIFFERENTIAL_ENABLE | LTC2991_V7_V8_TEMP_ENABLE );
+
+    /*housir: 温度 */
+       if  (0 != i2c_write_byte_data(0x4D, LTC2991_CHANNEL_ENABLE_REG , 0xf0))
+        {
+            printk("write  reg_addr 0x01 error!!!\n");
+        }
 	while(1)
 	{
 		printk("my thread:current->mm = %p,index = 0x%x\n",current->mm,index++);
@@ -126,22 +152,35 @@ static int CreatThreadMain(void *v_ptr)
 		/*在此可以完成一些监控动作*/
 		/*完成电压监控从LTC2991读取6路电压写入fpga寄存器*/
 
-        i2c_write_byte_data(0x4d, LTC2991_CONTROL_V5678_REG, write_value);
+        i2c_write_byte_data(0x4b, 0x00, write_value);
         msleep(100);
-        i2c_read_byte_data(0x4d, LTC2991_CONTROL_V5678_REG, &value);
+        i2c_read_byte_data(0x4b, 0x00, &value);
+        printk("slave addr:0x4b reg:0x00: write_value %d  read value == %d\n", write_value, value);
 
-        printk("slave addr:0x4d reg:0x07: write_value %d \n read value == %d\n", write_value, value);
-
-        i2c_write_byte_data(0x4b, LTC2991_CONTROL_V5678_REG, write_value);
+        value = 0;
+        i2c_write_byte_data(0x4b, 0x01, write_value);
 //        msleep(100);
-        i2c_read_byte_data(0x4b, LTC2991_CONTROL_V5678_REG, &value);
+        i2c_read_byte_data(0x4b, 0x01, &value);
 
-        printk("slave addr:0x4b reg:0x07: write_value %d \n read value == %d\n", write_value, value);
+        printk("slave addr:0x4b reg:0x01: write_value %d  read value == %d\n", write_value, value);
+
+        value = 0;
+        i2c_write_byte_data(0x4b, 0x06, write_value);
+//        msleep(100);
+        i2c_read_byte_data(0x4b, 0x06, &value);
+        printk("slave addr:0x4b reg:0x06: write_value %d  read value == %d\n", write_value, value);
+
+        value = 0;
+        i2c_write_byte_data(0x4b, 0x07, write_value);
+//        msleep(100);
+        i2c_read_byte_data(0x4b, 0x07, &value);
+        printk("slave addr:0x4b reg:0x07: write_value %d  read value == %d\n", write_value, value);
+
 
         value = 0;
         write_value++;
 #endif
-#if 1  /*housir:  读所有温度和电压值;*/
+#if 0  /*housir:  读所有温度和电压值;*/
         /*Read temperature from diode connected to V7-V8.*/
         /* Enable temperature mode.*/
 
@@ -164,12 +203,14 @@ static int CreatThreadMain(void *v_ptr)
         temperature = 0;
         stsensor.adc_code = 0;
 #endif       
-#if 0
+#if 1
+        vn_msb_reg_base = LTC2991_V1_MSB_REG;/*housir: MSB的基地址 */
+
         for (index = 0;index < SENSOR_T_MAX_NUM;index++)
         {
             /*Read temperature from diode connected to V1-V2 V3-V4 V5-V6 V7-V8.*/
 
-            ack = LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, aVnum_Creg[index], aVnum_Tenablereg[index], 0x00);
+//            ack = LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, aVnum_Creg[index], aVnum_Tenablereg[index], 0x00);
 
             /* Flush one ADC reading in case it is stale.  Then, take a new fresh reading.*/
             ack = LTC2991_adc_read_new_data(LTC2991_I2C_TEMP_ADDRESS, vn_msb_reg_base, &stsensor.adc_code, &data_valid, LTC2991_TIMEOUT);
@@ -185,7 +226,7 @@ static int CreatThreadMain(void *v_ptr)
             stsensor.hvtemp = temperature/1000;
             stsensor.lvtemp = temperature%1000; //- (int)temperature*100;
 
-            printk("read v%d v%d tem is %d.%d\n", 2*index-1, 2*index, stsensor.hvtemp , stsensor.lvtemp );
+            printk("read v%d v%d tem is %d.%d\n", 2*index+1, 2*index+2, stsensor.hvtemp , stsensor.lvtemp );
 
             temperature = 0;
             stsensor.adc_code = 0;
@@ -204,20 +245,28 @@ static int CreatThreadMain(void *v_ptr)
 
     voltage = LTC2991_code_to_single_ended_voltage(code, LTC2991_SINGLE_ENDED_lsb); // Converts code to voltage from single-ended lsb
 #endif
-#if 0
+#if 1
 /*Read single-ended voltage from V1.*/
 
     vn_msb_reg_base = LTC2991_V1_MSB_REG;
 
+       if  (0 != i2c_write_byte_data(0x4b, LTC2991_CHANNEL_ENABLE_REG , 0xf0))
+        {
+            printk("write  reg_addr 0x01 error!!!\n");
+        }
+
+     //LTC2991_register_set_clear_bits(LTC2991_I2C_V_ADDRESS, , 0x00, av_clearbit[index]);
     for (index = 0;index < SENSOR_V_MAX_NUM;index++)
     {
         /*Read single-ended voltage from V($index).*/
 
         ack |= LTC2991_register_set_clear_bits(LTC2991_I2C_V_ADDRESS, aVnum_Creg[index], 0x00, av_clearbit[index]);
 
+
         ack |= LTC2991_adc_read_new_data(LTC2991_I2C_V_ADDRESS, vn_msb_reg_base, &stsensor.adc_code, &data_valid, LTC2991_TIMEOUT);
 
         voltage = LTC2991_code_to_single_ended_voltage(stsensor.adc_code, LTC2991_SINGLE_ENDED_lsb); // Converts code to voltage from single-ended lsb
+        printk("voltage ===> [0x%x]\n", voltage);
         vn_msb_reg_base += 0x02;/*housir: v(1-6)相邻地址的增量:0x02 */
 
     }
