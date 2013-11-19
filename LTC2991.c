@@ -200,10 +200,8 @@ int8_t LTC2991_register_set_clear_bits(uint8_t i2c_address, uint8_t register_add
 }
 
 // Calculates the LTC2991 single-ended input voltages
-//float
 int LTC2991_code_to_single_ended_voltage(int16_t adc_code, /*housir:  float*/ int LTC2991_single_ended_lsb)
 {
-//  float 
   int voltage;
   int16_t sign = 1;
   if (adc_code >> 14)
