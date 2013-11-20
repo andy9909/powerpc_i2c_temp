@@ -5,9 +5,9 @@ PLATFORM = PowerPC
 #>>>>>>>>>>>>>>>>>>>>>>>
 ifeq ($(PLATFORM),PowerPC)   
 #	LINUX_SRC = ./linux-2.6.20
-#CROSS_COMPILE=powerpc-linux-gnu-
+CROSS_COMPILE=powerpc-linux-gnu-
 #CROSS_COMPILE=arm-linux-
-#ARCH := powerpc          
+ARCH := powerpc          
 #ARCH := arm        
 #export ARCH CROSS_COMPILE        
 endif       
@@ -37,7 +37,7 @@ KERNELDIR ?= /home/work/i2c_housir/linux-3.6.11/
 PWD       := $(shell pwd)
 
 default:
-	$(MAKE)  -C $(KERNELDIR) M=$(PWD) modules 
+	$(MAKE)  -C $(KERNELDIR) M=$(PWD) modules ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE)
 endif
 
 

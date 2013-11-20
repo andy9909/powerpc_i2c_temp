@@ -35,10 +35,25 @@
 #define SENSOR_T_MAX_NUM       4            /*传感器中测的温度的个数  */
 #define LTC2991_V_DELAY_MS      2                    /* Single-Ended Voltage Measurement l 0.9 1.5 1.8  */
 #define LTC2991_TEMP_DELAY_MS    10        /* 温度里面没有说明延时多长,暂且设为10 */
+#define TOTAL_SENSOES            10/*一共10个传感器采集点*/
+#define SENSOR_TEMP_TOTAL           4            /*4个温度采集点  */
+
+#define TEMP_1_ADDR            /*  */
+#define TEMP_2_ADDR            /*  */
+#define TEMP_3_ADDR            /*  */
+#define TEMP_4_ADDR            /*  */
+
+#define V_1_ADDR            /*  */
+#define V_2_ADDR            /*  */
+#define V_3_ADDR            /*  */
+#define V_4_ADDR            /*  */
+#define V_5_ADDR            /*  */
+#define V_6_ADDR            /*  */
 
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Kozo");
 
+/*housir: 常量 */
  const int LTC2991_SINGLE_ENDED_lsb = 305;/*housir: 0.000305 * 13bit adc_code */
 //! Typical differential LSB weight in volts
  const int LTC2991_DIFFERENTIAL_lsb = 19;/*housir: 0.00019 * 13bit adc_code*/
@@ -58,6 +73,35 @@ typedef struct lct2991_v_temp_data_tag{
     int hvtemp ;     /*housir: 温度/电压的整数位 */
     int lvtemp ;     /*housir: 温度/电压的小数位 */    
  }st_sensorinfo,*pst_sensorinfo;
+
+/*housir: 全局变量 */
+st_sensorinfo stasensor_value [TOTAL_SENSOES] =
+{
+    {
+    .sign     = POSITIVE,
+    .hvtemp   = 0,
+    .lvtemp   = 0,
+    },
+    0,
+};
+static int sensor_major = 258;
+
+/*housir: 函数声明 */
+static int sensor_open(struct inode *inode, struct file *filp);
+static ssize_t sensor_read(struct file *filp, char *buffer, size_t count, loff_t *ppos);
+   
+
+static struct file_operations sensor_read_ops = {
+	owner:	THIS_MODULE,
+	open:	sensor_open,
+	read:	sensor_read,	
+};
+
+static int sensor_open(struct inode *inode, struct file *filp)
+{
+    printk("===> %s\n", __func__);
+    return 0;
+}
 /*************************************************************
 函数名:CreatThreadMain
 功能:创建设备功能主线程
@@ -96,14 +140,6 @@ static int CreatThreadMain(void *v_ptr)
     
     volatile unsigned int *pos= NULL;
     uint8_t *temp_pos =NULL;
-
-    st_sensorinfo stsensor =
-    {
-//        .adc_code = 0,
-        .sign     = POSITIVE,
-        .hvtemp   = 0,
-        .lvtemp   = 0,
-    };
 
     printk("---> %s\n", __func__);
 
@@ -193,10 +229,11 @@ static int CreatThreadMain(void *v_ptr)
             stsensor.sign = temperature & 0x80000000;
             temperature &= ~(0x80000000);/*housir: 符号位置0 */
 
-            stsensor.hvtemp = temperature/10000;
-            stsensor.lvtemp = temperature%10000; //- (int)temperature*100;
+            stsensor_value[index].hvtemp = temperature/10000;
+            stsensor_value[index].lvtemp = temperature%10000; //- (int)temperature*100;
 
             printk("read v%d v%d tem is %d.%d\n", 2*index+1, 2*index+2, stsensor.hvtemp , stsensor.lvtemp );
+
 
             temperature = 0;
             adc_code = 0;
@@ -219,8 +256,8 @@ static int CreatThreadMain(void *v_ptr)
         stsensor.sign = voltage & 0x80000000;
         voltage &= ~(0x80000000);/*housir: 符号位置0 */
 
-        stsensor.hvtemp = voltage/1000000;
-        stsensor.lvtemp = voltage%1000000; 
+        stsensor[ index + SENSOR_TEMP_TOTAL ].hvtemp = voltage/1000000;
+        stsensor[ index + SENSOR_TEMP_TOTAL ].lvtemp = voltage%1000000; 
         printk("read v%d V is %d.%d\n", index+1, stsensor.hvtemp , stsensor.lvtemp );
 
         adc_code = 0;
@@ -233,13 +270,76 @@ static int CreatThreadMain(void *v_ptr)
 	return 0;
 }
 
+static ssize_t sensor_read(struct file *filp, char *buffer, size_t count, loff_t *ppos)
+{
+    /*housir:方案一： 将这一片内存copy到用户空间 */
+	if(copy_to_user(buffer, (char *)&stasensor_value, sizeof(stasensor_value)))
+    {
+		return -EFAULT;//拷贝内核数据到用户空间
+    }
+    /*housir: 方案二：根据上面传入的count 当成参数索引值 copy当前指定传感器的值 */
+}
+#if 0
+/*
+ *初始化并添加结构提struct cdev到系统之中
+ */
+static void sensor_setup_cdev(struct cdev *dev, int minor,
+		struct file_operations *fops)
+{
+	int err, devno = MKDEV(adc_major, minor);
+    
+	cdev_init(dev, fops);//初始化结构体struct cdev
+	dev->owner = THIS_MODULE;
+	dev->ops = fops;//给结构体里的ops成员赋初值，这里是对设备操作的具体的实现函数
+	err = cdev_add (dev, devno, 1);//将结构提struct cdev添加到系统之中
+	/* Fail gracefully if need be */
+	if (err)
+    {
+		printk (KERN_NOTICE "Error %d adding adc %d", err, minor);
+    }
+}
+#endif
+
 static __init int ThreadMain_init(void)
 {
+
+	int result;
 
 	printk(KERN_INFO"demo init\n");
 	printk("demo init:current->mm = %p\n",current->mm);
 	printk("demo init:current->active_mm = %p\n",current->active_mm);
+
+	dev_t dev = MKDEV(sensor_major, 0);//将主设备号和次设备号定义到一个dev_t数据类型的结构体之中
+
+	/* 初始化字符设备 */
+	if (sensor_major)
+    {
+		result = register_chrdev_region(dev, 1, "read_sensor");//静态注册一个设备，设备号先前指定好，并得到一个设备名，cat /proc/device来查看信息
+    }
+    else 
+    {
+		result = alloc_chrdev_region(&dev, 0, 1, "read_sensor");//如果主设备号被占用，则由系统提供一个主设备号给设备驱动程序
+		sensor_major = MAJOR(dev);//得到主设备号
+	}
+	if (result < 0) {
+		return result;
+	}
+	if (sensor_major == 0)                          
+		sensor_major = result;//如果静态分配失败。把动态非配的设备号给设备驱动程序
+
+	cdev_init(dev, sensor_read_ops);//初始化结构体struct cdev
+	dev->owner = THIS_MODULE;
+	dev->ops = sensor_read_ops;//给结构体里的ops成员赋初值，这里是对设备操作的具体的实现函数
+	err = cdev_add (dev, 0, 1);//将结构提struct cdev添加到系统之中
+	/* Fail gracefully if need be */
+	if (err)
+    {
+		printk (KERN_NOTICE "Error %d adding adc %d", err, minor);
+    }
+    
+//	adc_setup_cdev(&AdcDevs, 0, &adc_remap_ops);//初始化和添加结构体struct cdev到系统之中
 	/*iomap*/
+
 	kernel_thread(CreatThreadMain, NULL, CLONE_KERNEL|SIGCHLD);
 	//kthread_run(noop2,NULL,"mythread");
 	return 0;
@@ -247,6 +347,7 @@ static __init int ThreadMain_init(void)
 
 static __exit void ThreadMain_exit(void)
 {
+	unregister_chrdev_region(MKDEV(adc_major, 0), 1);//卸载设备驱动所占有的资源
 	printk(KERN_INFO"demo exit\n");
 }
 
