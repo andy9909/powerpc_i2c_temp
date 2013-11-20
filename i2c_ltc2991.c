@@ -38,6 +38,8 @@
 #define    LCT2991_MINOR  222 /*  */ 
 #define LCT2991_MAJOR    250            /*  */
 
+#define FPGA_TEMP_ADDR   0x7c            /*0x7c - 0x8f  FPGA localbus上的存放温度 值的区域，每个32位寄存器 只存取其低位，为了一次写入 读出.只用16位，则赋值的时候得先读再或赋值*/
+#define FPGA_V_ADDR  0xa0            /*0xa0 -0xbf */
 
 static int lct2991_major = LCT2991_MAJOR;
 static int number_of_devices = 1;
@@ -107,6 +109,9 @@ static struct i2c_board_info i2c_devs0[] __initdata = {
 int lct2991_open (struct inode *inode, struct file *filp)
 {
     printk("===> %s\n", __func__);
+    gpfcon = ioremap(FPGA_TEMP_ADDR, 4*4);
+    gpfcon = ioremap(FPGA_V_ADDR, 6*4);
+    printk("<=== %s\n", __func__);
 	return 0;
 }
 
@@ -165,12 +170,12 @@ static int __devinit lct2991_probe(struct i2c_client *client,
     devno = MKDEV(lct2991_major, LCT2991_MINOR);
     if (lct2991_major)
     {
-        ret = register_chrdev_region(devno, number_of_devices, "lct2991");
+        ret = register_chrdev_region(devno, number_of_devices, "ltc2991");
         printk("ret manual === %d \n", ret);
     }
 	else
     {
-		ret = alloc_chrdev_region(&devno, 0, number_of_devices, "lct2991");
+		ret = alloc_chrdev_region(&devno, 0, number_of_devices, "ltc2991");
 		lct2991_major = MAJOR(devno);
         printk("ret auto get devno=== %d \n", ret);
 	}

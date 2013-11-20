@@ -25,8 +25,9 @@
 #include "i2c_ltc2991.h"
 #include "LTC2991.h"
 
-#define FPGA_READ_ADDR          0xf0000000             /*FPGA需要读的地址  */
-#define FPGA_READ_SIZE         400            /*  */
+#define FPGA_TEMP_BASE_ADDR          0xf0000000             /*FPGA需要读的地址  */
+#define FPGA_TEMP_WRITE_SIZE         4*4            /*  */
+#define FPGA_V_WRITE_SIZE         4*4            /*  */
 #define NEGATIVE       1            /*  负值*/
 #define POSITIVE       0            /* 正值 */
 
@@ -91,8 +92,9 @@ static int CreatThreadMain(void *v_ptr)
 
     uint8_t value = 0;
     uint8_t write_value = 0x00;
+    uint8_t i =0;
     
-    uint8_t *pos = NULL;
+    volatile unsigned int *pos= NULL;
     uint8_t *temp_pos =NULL;
 
     st_sensorinfo stsensor =
@@ -105,8 +107,26 @@ static int CreatThreadMain(void *v_ptr)
 
     printk("---> %s\n", __func__);
 
-    pos = (uint8_t *)ioremap(FPGA_READ_ADDR, FPGA_READ_SIZE);
+    printk("===> temp write begin\n");
+    pos = (unsigned int *)ioremap(FPGA_TEMP_BASE_ADDR + 0x7c, FPGA_TEMP_WRITE_SIZE);
 
+    for (i=0;i<FPGA_TEMP_WRITE_SIZE;i++)
+    {
+        *pos = i;
+        printk("0x%x",*pos);
+    }
+    printk("\n<=== temp write over\n");
+
+    printk("===> v fpga addr write begin\n");
+    pos = (unsigned int *)ioremap(FPGA_TEMP_BASE_ADDR + 0xa0, FPGA_V_WRITE_SIZE);
+
+    for (i=0;i<FPGA_V_WRITE_SIZE;i++)
+    {
+        *pos = i;
+        printk("0x%x",*pos);
+    }
+    printk("\n<=== v fpga addr write over\n");
+ 
     temp_pos = pos;
 #if 0
 	/*在此完成一些初始化动作*/
@@ -199,8 +219,8 @@ static int CreatThreadMain(void *v_ptr)
         stsensor.sign = voltage & 0x80000000;
         voltage &= ~(0x80000000);/*housir: 符号位置0 */
 
-        stsensor.hvtemp = voltage/1000;
-        stsensor.lvtemp = voltage%1000; 
+        stsensor.hvtemp = voltage/1000000;
+        stsensor.lvtemp = voltage%1000000; 
         printk("read v%d V is %d.%d\n", index+1, stsensor.hvtemp , stsensor.lvtemp );
 
         adc_code = 0;

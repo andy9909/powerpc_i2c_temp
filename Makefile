@@ -27,7 +27,8 @@ EXTRA_CFLAGS += $(DEBFLAGS)
 ifneq ($(KERNELRELEASE),)
 # call from kernel build system
 #obj-$(CONFIG_RWTEMP_V) += rwtemp_v.o
-obj-m	:= rwtemp_v.o i2c_ltc2991.o
+obj-m	:= rwtemp_v.o 
+#i2c_ltc2991.o
 rwtemp_v-objs := LTC2991.o ThreadMain.o
 
 else
