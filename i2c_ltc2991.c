@@ -38,9 +38,10 @@
 #define    LCT2991_MINOR  222 /*  */ 
 #define LCT2991_MAJOR    250            /*  */
 
+#if 0
 #define FPGA_TEMP_ADDR   0x7c            /*0x7c - 0x8f  FPGA localbus上的存放温度 值的区域，每个32位寄存器 只存取其低位，为了一次写入 读出.只用16位，则赋值的时候得先读再或赋值*/
 #define FPGA_V_ADDR  0xa0            /*0xa0 -0xbf */
-
+#endif
 static int lct2991_major = LCT2991_MAJOR;
 static int number_of_devices = 1;
 
@@ -108,22 +109,20 @@ static struct i2c_board_info i2c_devs0[] __initdata = {
 #endif
 int lct2991_open (struct inode *inode, struct file *filp)
 {
-    printk("===> %s\n", __func__);
-    gpfcon = ioremap(FPGA_TEMP_ADDR, 4*4);
-    gpfcon = ioremap(FPGA_V_ADDR, 6*4);
-    printk("<=== %s\n", __func__);
+//    printk("===> %s\n", __func__);
+//    printk("<=== %s\n", __func__);
 	return 0;
 }
 
 ssize_t lct2991_read(struct file *file, char __user *buff, size_t count, loff_t *offp)
 {
-    printk("===> %s\n", __func__);
+//    printk("===> %s\n", __func__);
 	return 0;
 }
 
 ssize_t lct2991_write(struct file *file, const char __user *buff, size_t count, loff_t *offp)
 {
-    printk("===> %s\n", __func__);
+//    printk("===> %s\n", __func__);
 	return 0;
 }
 
@@ -141,7 +140,7 @@ static int lct2991_ioctl(struct inode *inode, struct file *file, unsigned int cm
 #endif
 static int lct2991_release(struct inode *node, struct file *file)
 {    
-    printk("===> %s\n", __func__);
+//    printk("===> %s\n", __func__);
 
 	return 0;
 }
@@ -173,12 +172,12 @@ static int __devinit lct2991_probe(struct i2c_client *client,
         ret = register_chrdev_region(devno, number_of_devices, "ltc2991");
         printk("ret manual === %d \n", ret);
     }
-	else
+    else
     {
-		ret = alloc_chrdev_region(&devno, 0, number_of_devices, "ltc2991");
-		lct2991_major = MAJOR(devno);
+	ret = alloc_chrdev_region(&devno, 0, number_of_devices, "ltc2991");
+	lct2991_major = MAJOR(devno);
         printk("ret auto get devno=== %d \n", ret);
-	}
+    }
 
 
     if(ret)
@@ -234,19 +233,19 @@ int8_t i2c_write_byte_data(uint8_t address, uint8_t command, uint8_t value)
         },
     };
 
-    printk("===> %s\n", __func__);
-    printk("addr ===> 0x%x command ===> 0x%x value ===> 0x%x\n", address, command, value);
+//    printk("===> %s\n", __func__);
+//    printk("addr ===> 0x%x command ===> 0x%x value ===> 0x%x\n", address, command, value);
 
     new_client->addr = address;/* */
 
     ret = i2c_transfer(new_client->adapter, msgs, 1);    
-    printk("ret ===> 0x%x\n", ret);
-
-    printk("<=== %s\n", __func__);
+//    printk("ret ===> 0x%x\n", ret);
+//
+//    printk("<=== %s\n", __func__);
     
     if(ret < 0 )
     {
-        printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
+        printk("[error] %s:%s->%d\n", __func__, __FILE__, __LINE__);
         return -1;
     }
     else
@@ -291,8 +290,8 @@ int8_t i2c_write_word_data(uint8_t address, uint8_t command, uint16_t value)
     buf[1] = (uint8_t)value>>8;/*housir: 大端模式 */
     buf[2] = value & 0x00ff;/*housir: 大端 */
 
-    printk("===> %s\n", __func__);
-    printk("command ===> 0x%x\n", command);
+//    printk("===> %s\n", __func__);
+//    printk("command ===> 0x%x\n", command);
 
 
     new_client->addr = address;/* */
@@ -300,7 +299,7 @@ int8_t i2c_write_word_data(uint8_t address, uint8_t command, uint16_t value)
     ret = i2c_transfer(new_client->adapter, msgs, 1);    
     if(ret < 0 )
     {
-        printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
+        printk("[error] %s:%s->%d\n", __func__, __FILE__, __LINE__);
         return -1;
     }
     else
@@ -353,20 +352,20 @@ int8_t i2c_read_byte_data(uint8_t address, uint8_t command, uint8_t *value)
         },
     };
 
-    printk("===> %s\n", __func__);
-    printk("command ===> 0x%x\n", command);
+//    printk("===> %s\n", __func__);
+//    printk("command ===> 0x%x\n", command);
 
 
     new_client->addr = address;/* */
 
     ret = i2c_transfer(new_client->adapter, msgs, 2);
-    printk("address ===> 0x%x\n value ===> 0x%x\n", address, *value);
-
-    printk("<=== %s\n", __func__);
+//    printk("address ===> 0x%x\n value ===> 0x%x\n", address, *value);
+//
+//    printk("<=== %s\n", __func__);
 
     if(ret < 0 )
     {
-        printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
+        printk("[error] %s:%s->%d\n", __func__, __FILE__, __LINE__);
         return -1;
     }
     else
@@ -442,7 +441,7 @@ int8_t i2c_read_word_data(uint8_t address, uint8_t command, uint16_t *value)
 
     if(ret < 0 )
     {
-        printk("[error] %s:%s->%s\n", __func__, __FILE__, __LINE__);
+        printk("[error] %s:%s->%d\n", __func__, __FILE__, __LINE__);
         return -1;
     }
     else
@@ -473,11 +472,11 @@ EXPORT_SYMBOL(i2c_read_word_data);
 
 static int lct2991_remove(struct i2c_client *client)
 {
-    printk("===> %s\n", __func__);
+//    printk("===> %s\n", __func__);
 
     cdev_del(&i2c_lct2991_dev);
     unregister_chrdev_region(devno, number_of_devices);
-	printk("lct2991_i2c device uninstalled\n");
+//	printk("lct2991_i2c device uninstalled\n");
     
     return 0;
 }
@@ -486,21 +485,21 @@ static int __init lct2991_init(void)
 {      
     int ret=0;
 
-    printk("===> %s\n", __func__);
+//    printk("===> %s\n", __func__);
 
 //    i2c_register_board_info(0, i2c_devs0, ARRAY_SIZE(i2c_devs0));/*housir:  没有这个设备，则需要提前注册上*/   
     /*housir: 将name和id_table 上报: i2c_add_driver会将驱动注册到总线上，（2）探测到i2c设备就会调用at24c02_probe， （3）探测主要是用i2c_match_id函数比较client的名字和id_table中名字，如果相等，则探测到i2c设备 */
     ret =  i2c_add_driver(&lct2991_i2c_driver);
 
-    printk("return by i2c_add_driver === %d\n", ret);
-    printk("<=== %s\n", __func__);
+//    printk("return by i2c_add_driver === %d\n", ret);
+//    printk("<=== %s\n", __func__);
 //    return i2c_add_driver(&lct2991_i2c_driver);
     return ret;
 }
  
 static void __exit lct2991_exit(void)
 {
-    printk("===> %s\n", __func__);
+//    printk("===> %s\n", __func__);
     i2c_del_driver(&lct2991_i2c_driver);
 }
 

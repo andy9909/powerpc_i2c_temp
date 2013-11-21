@@ -21,6 +21,8 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
+#include <linux/fs.h>
+#include <asm/uaccess.h>
 
 #include "i2c_ltc2991.h"
 #include "LTC2991.h"
@@ -38,6 +40,8 @@
 #define TOTAL_SENSOES            10/*一共10个传感器采集点*/
 #define SENSOR_TEMP_TOTAL           4            /*4个温度采集点  */
 
+#define      MAJOR_NUM    244       /*  */
+#if 0
 #define TEMP_1_ADDR            /*  */
 #define TEMP_2_ADDR            /*  */
 #define TEMP_3_ADDR            /*  */
@@ -49,22 +53,15 @@
 #define V_4_ADDR            /*  */
 #define V_5_ADDR            /*  */
 #define V_6_ADDR            /*  */
+#endif
 
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Kozo");
 
 /*housir: 常量 */
  const int LTC2991_SINGLE_ENDED_lsb = 305;/*housir: 0.000305 * 13bit adc_code */
-//! Typical differential LSB weight in volts
  const int LTC2991_DIFFERENTIAL_lsb = 19;/*housir: 0.00019 * 13bit adc_code*/
-//! Typical VCC LSB weight in volts
-// const int LTC2991_VCC_lsb = 3.05176E-04;
-//! Typical temperature LSB weight in degrees Celsius (and Kelvin).
-//! Used for internal temperature as well as remote diode temperature measurements.
  const int LTC2991_TEMPERATURE_lsb = 625;
-//! Typical remote diode LSB weight in volts.
-//! Used to readback diode voltage when in temperature measurement mode.
-// const int LTC2991_DIODE_VOLTAGE_lsb = 3.815E-05;
  const uint16_t LTC2991_TIMEOUT =1000;
 
 typedef struct lct2991_v_temp_data_tag{
@@ -84,7 +81,9 @@ st_sensorinfo stasensor_value [TOTAL_SENSOES] =
     },
     0,
 };
-static int sensor_major = 258;
+static int sensor_major = 244;
+static struct cdev sensor_read_cdev;
+
 
 /*housir: 函数声明 */
 static int sensor_open(struct inode *inode, struct file *filp);
@@ -99,7 +98,7 @@ static struct file_operations sensor_read_ops = {
 
 static int sensor_open(struct inode *inode, struct file *filp)
 {
-    printk("===> %s\n", __func__);
+//    printk("===> %s\n", __func__);
     return 0;
 }
 /*************************************************************
@@ -116,6 +115,7 @@ static int CreatThreadMain(void *v_ptr)
 	v_ptr = v_ptr;
 
 	int index = 0;
+    int thread_index = 0;
     int16_t adc_code;/*housir: 温度采集到的adc_code或者电压采集到的code */
     int8_t data_valid;
     int temperature = 0;
@@ -138,11 +138,12 @@ static int CreatThreadMain(void *v_ptr)
     uint8_t write_value = 0x00;
     uint8_t i =0;
     
-    volatile unsigned int *pos= NULL;
-    uint8_t *temp_pos =NULL;
+//    volatile unsigned int *pos= NULL;
+//    uint8_t *temp_pos =NULL;
 
     printk("---> %s\n", __func__);
 
+#if 0 /*housir: FPGA写测试 */
     printk("===> temp write begin\n");
     pos = (unsigned int *)ioremap(FPGA_TEMP_BASE_ADDR + 0x7c, FPGA_TEMP_WRITE_SIZE);
 
@@ -164,6 +165,7 @@ static int CreatThreadMain(void *v_ptr)
     printk("\n<=== v fpga addr write over\n");
  
     temp_pos = pos;
+#endif
 #if 0
 	/*在此完成一些初始化动作*/
 /*housir: 一次设置多次读取,是不是采集到的值太早，设置的太过频繁，导致读出的 数据为0 */
@@ -205,8 +207,8 @@ static int CreatThreadMain(void *v_ptr)
     }
 	while(1)
 	{
-		printk("my thread:current->mm = %p,index = 0x%x\n",current->mm,index++);
-		printk("my thread:current->active_mm = %p\n",current->active_mm);
+//		printk("my thread:current->mm = %p,index = 0x%x\n",current->mm, thread_index++);
+//		printk("my thread:current->active_mm = %p\n",current->active_mm);
 		set_current_state(TASK_INTERRUPTIBLE);
 		/*指定周期内将线程唤醒*/
 		schedule_timeout(10*HZ);
@@ -226,13 +228,14 @@ static int CreatThreadMain(void *v_ptr)
             /* Converts code to temperature from adc code and temperature lsb */
             temperature = LTC2991_temperature(adc_code, LTC2991_TEMPERATURE_lsb, 1);
 
-            stsensor.sign = temperature & 0x80000000;
+            stasensor_value[index].sign = temperature & 0x80000000;
             temperature &= ~(0x80000000);/*housir: 符号位置0 */
 
-            stsensor_value[index].hvtemp = temperature/10000;
-            stsensor_value[index].lvtemp = temperature%10000; //- (int)temperature*100;
+            stasensor_value[index].hvtemp = temperature/10000;
+            
+	    stasensor_value[index].lvtemp = (temperature%10000)/100; //- (int)temperature*100;
 
-            printk("read v%d v%d tem is %d.%d\n", 2*index+1, 2*index+2, stsensor.hvtemp , stsensor.lvtemp );
+ //           printk("kthread : read v%d v%d tem is %d.%.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
 
 
             temperature = 0;
@@ -253,13 +256,16 @@ static int CreatThreadMain(void *v_ptr)
 
         ack |= LTC2991_adc_read_new_data(LTC2991_I2C_V_ADDRESS, vn_msb_reg_base, &adc_code, &data_valid, LTC2991_V_DELAY_MS);
         voltage = LTC2991_code_to_single_ended_voltage(adc_code, LTC2991_SINGLE_ENDED_lsb); // Converts code to voltage from single-ended lsb
-        stsensor.sign = voltage & 0x80000000;
+        stasensor_value[ index + SENSOR_TEMP_TOTAL ].sign = voltage & 0x80000000;
         voltage &= ~(0x80000000);/*housir: 符号位置0 */
 
-        stsensor[ index + SENSOR_TEMP_TOTAL ].hvtemp = voltage/1000000;
-        stsensor[ index + SENSOR_TEMP_TOTAL ].lvtemp = voltage%1000000; 
-        printk("read v%d V is %d.%d\n", index+1, stsensor.hvtemp , stsensor.lvtemp );
+        stasensor_value[index + SENSOR_TEMP_TOTAL].hvtemp = voltage/1000000;
 
+ //       printk("voltage v[%d] : [%d]\n", index+1, voltage);
+
+        stasensor_value[index + SENSOR_TEMP_TOTAL].lvtemp = (voltage%1000000)/10000; //- (int)temperature*100;
+        
+        //printk("kthread : read v%d V is %d.%0.2d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
         adc_code = 0;
         voltage = 0;
         vn_msb_reg_base += 0x02;/*housir: v(1-6)相邻地址的增量:0x02 */
@@ -272,12 +278,32 @@ static int CreatThreadMain(void *v_ptr)
 
 static ssize_t sensor_read(struct file *filp, char *buffer, size_t count, loff_t *ppos)
 {
+    int index = 0;
+ //   printk("===> %s\n", __func__);    
+#if  0
+    for( index=0;index<SENSOR_TEMP_TOTAL;index++)
+    {
+        printk("read v%d v%d tem is %d.%d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
+    }
+    for( index=0;index<SENSOR_V_MAX_NUM;index++)
+    {
+        printk("read v%d V is %d.%d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
+    }
+#endif
     /*housir:方案一： 将这一片内存copy到用户空间 */
-	if(copy_to_user(buffer, (char *)&stasensor_value, sizeof(stasensor_value)))
+    if(copy_to_user(buffer, (char *)&stasensor_value[0], sizeof(stasensor_value)))
     {
 		return -EFAULT;//拷贝内核数据到用户空间
     }
     /*housir: 方案二：根据上面传入的count 当成参数索引值 copy当前指定传感器的值 */
+#if 0
+	if(copy_to_user(buffer, (char *)&stasensor_value[count], sizeof(stasensor_value)))
+    {
+		return -EFAULT;//拷贝内核数据到用户空间
+    }   
+#endif
+
+ //   printk("<=== %s\n", __func__);    
 }
 #if 0
 /*
@@ -304,11 +330,14 @@ static __init int ThreadMain_init(void)
 {
 
 	int result;
+    	int err=0;
 
 	printk(KERN_INFO"demo init\n");
 	printk("demo init:current->mm = %p\n",current->mm);
 	printk("demo init:current->active_mm = %p\n",current->active_mm);
 
+    register_chrdev(MAJOR_NUM, "read_sensor", &sensor_read_ops);
+#if 0
 	dev_t dev = MKDEV(sensor_major, 0);//将主设备号和次设备号定义到一个dev_t数据类型的结构体之中
 
 	/* 初始化字符设备 */
@@ -327,19 +356,19 @@ static __init int ThreadMain_init(void)
 	if (sensor_major == 0)                          
 		sensor_major = result;//如果静态分配失败。把动态非配的设备号给设备驱动程序
 
-	cdev_init(dev, sensor_read_ops);//初始化结构体struct cdev
-	dev->owner = THIS_MODULE;
-	dev->ops = sensor_read_ops;//给结构体里的ops成员赋初值，这里是对设备操作的具体的实现函数
-	err = cdev_add (dev, 0, 1);//将结构提struct cdev添加到系统之中
+	cdev_init(&sensor_read_cdev, &sensor_read_ops);//初始化结构体struct cdev
+	sensor_read_cdev.owner = THIS_MODULE;
+//	dev->ops = &sensor_read_ops;//给结构体里的ops成员赋初值，这里是对设备操作的具体的实现函数
+	err = cdev_add (&sensor_read_cdev, 0, 1);//将结构提struct cdev添加到系统之中
 	/* Fail gracefully if need be */
 	if (err)
     {
-		printk (KERN_NOTICE "Error %d adding adc %d", err, minor);
+		printk (KERN_NOTICE "Error %d \n", err);
     }
     
 //	adc_setup_cdev(&AdcDevs, 0, &adc_remap_ops);//初始化和添加结构体struct cdev到系统之中
 	/*iomap*/
-
+#endif
 	kernel_thread(CreatThreadMain, NULL, CLONE_KERNEL|SIGCHLD);
 	//kthread_run(noop2,NULL,"mythread");
 	return 0;
@@ -347,8 +376,11 @@ static __init int ThreadMain_init(void)
 
 static __exit void ThreadMain_exit(void)
 {
-	unregister_chrdev_region(MKDEV(adc_major, 0), 1);//卸载设备驱动所占有的资源
-	printk(KERN_INFO"demo exit\n");
+#if 0
+	unregister_chrdev_region(MKDEV(sensor_major, 0), 1);//卸载设备驱动所占有的资源
+#endif
+   unregister_chrdev(MAJOR_NUM, "read_sensor");
+   printk(KERN_INFO"demo exit\n");
 }
 
 module_init(ThreadMain_init);

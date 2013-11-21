@@ -68,6 +68,7 @@ ongoing work.
 #include "i2c_ltc2991.h"
 #include "LTC2991.h"
 
+//#define printk(...)  ;            /*  */
 // Reads a 14-bit adc_code from LTC2991.
 int8_t LTC2991_adc_read(uint8_t i2c_address, uint8_t msb_register_address, int16_t *adc_code, int8_t *data_valid)
 {
@@ -107,22 +108,22 @@ int8_t LTC2991_adc_read_timeout(uint8_t i2c_address, uint8_t msb_register_addres
   int8_t ack = 0;
   uint16_t timer_count;  // Timer count for data_valid
 
-  printk("===> .............%s\n", __func__);
-  printk("timeout === [%d]ms\n", timeout);
+//  printk("===> .............%s\n", __func__);
+//  printk("timeout === [%d]ms\n", timeout);
   for (timer_count = 0; timer_count < timeout; timer_count++)
   {
     ack |= LTC2991_adc_read(i2c_address, msb_register_address, &(*adc_code), &(*data_valid));   //! 1)Read ADC until data valid bit is set
 //    if ((!ack) || (*data_valid == 1)) break;
     if ( (*data_valid == 1)) 
     {
-        printk("<===>new data has in it!!!!!!!!!!!\n");
+//        printk("<===>new data has in it!!!!!!!!!!!\n");
         break;
     }
 //    delay(1);
     msleep(1);
   }
-  printk("adc timeout................%d\n", timer_count);
-  printk("<=== ..............%s\n", __func__);
+//  printk("adc timeout................%d\n", timer_count);
+//  printk("<=== ..............%s\n", __func__);
   return(ack);
 }
 
@@ -135,17 +136,17 @@ int8_t LTC2991_adc_read_new_data(uint8_t i2c_address, uint8_t msb_register_addre
 {
   int8_t ack = 0;
 
-  printk("===> %s\n", __func__);
+//  printk("===> %s\n", __func__);
 
   ack |= LTC2991_adc_read(i2c_address, msb_register_address, &(*adc_code), &(*data_valid)); //! 1)  Throw away old data
 
-  printk("old data data_valid ===> 0x%x\n", *data_valid);
+//  printk("old data data_valid ===> 0x%x\n", *data_valid);
 
   ack |= LTC2991_adc_read_timeout(i2c_address, msb_register_address, &(*adc_code), &(*data_valid), timeout); //! 2) Read new data
 
-  printk("new data data_valid ===> 0x%x\n", *data_valid);
+//  printk("new data data_valid ===> 0x%x\n", *data_valid);
 
-  printk("<=== %s\n", __func__);
+//  printk("<=== %s\n", __func__);
 
   return(ack);
 }
@@ -155,13 +156,13 @@ int8_t LTC2991_register_read(uint8_t i2c_address, uint8_t register_address, uint
 {
   int8_t ack = 0;
 
-  printk("===> %s\n", __func__);
+//  printk("===> %s\n", __func__);
 
   ack = i2c_read_byte_data(i2c_address, register_address, register_data);
 
-  printk("i2c_address === [%x] Reg_addr=== [%x] Reg_data === [%x]\n", i2c_address, register_address, *register_data);
+//  printk("i2c_address === [%x] Reg_addr=== [%x] Reg_data === [%x]\n", i2c_address, register_address, *register_data);
 
-  printk("<=== %s\n", __func__);
+//  printk("<=== %s\n", __func__);
 
   return(ack);
 }
@@ -172,11 +173,11 @@ int8_t LTC2991_register_write(uint8_t i2c_address, uint8_t register_address, uin
 {
   int8_t ack = 0;
 
-  printk("===> %s\n", __func__);
+//  printk("===> %s\n", __func__);
   
   ack = i2c_write_byte_data(i2c_address, register_address, register_data);
 
-  printk("<=== %s\n", __func__);
+//  printk("<=== %s\n", __func__);
 
   return(ack);
 }
@@ -188,14 +189,14 @@ int8_t LTC2991_register_set_clear_bits(uint8_t i2c_address, uint8_t register_add
   uint8_t register_data;
   int8_t ack = 0;
     
-  printk("===> %s\n", __func__);
+//  printk("===> %s\n", __func__);
 
   ack |= LTC2991_register_read(i2c_address, register_address, &register_data);  //! 1) Read register
   register_data = register_data & (~bits_to_clear); //! 2) Clear bits that were set to be cleared
   register_data = register_data | bits_to_set;
   ack |= LTC2991_register_write(i2c_address, register_address, register_data);  //! 3) Write to register with the cleared bits
 
-  printk("<=== %s\n", __func__);
+//  printk("<=== %s\n", __func__);
   return(ack);
 }
 
