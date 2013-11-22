@@ -12,6 +12,7 @@ mdev -s
 /bin/mount -t ext2 /dev/md0 /mnt
 /bin/chmod 777 /mnt
 /usr/sbin/exportfs -av
+/sbin/ifconfig eth1 up
 /sbin/insmod /lib/modules/3.6.11/kernel/i2c/i2c_ltc2991.ko
 /sbin/insmod /lib/modules/3.6.11/kernel/i2c/rwtemp_v.ko
 /sbin/insmod /lib/modules/3.6.11/kernel/fpga/fpga.ko
