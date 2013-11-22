@@ -113,14 +113,8 @@ static int sensor_open(struct inode *inode, struct file *filp)
 static int CreatThreadMain(void *v_ptr) 
 {
 	v_ptr = v_ptr;
-
-	int index = 0;
-    int thread_index = 0;
-    int16_t adc_code;/*housir: 温度采集到的adc_code或者电压采集到的code */
-    int8_t data_valid;
-    int temperature = 0;
-    int voltage = 0;
     int8_t ack = 0;
+
 #if 0 
         /*housir: 使用到的温度传感器的寄存器表 */
 //    const uint8_t aVmsbreg[]={LTC2991_V1_MSB_REG, LTC2991_V3_MSB_REG,LTC2991_V5_MSB_REG,LTC2991_V7_MSB_REG};
@@ -132,16 +126,11 @@ static int CreatThreadMain(void *v_ptr)
         LTC2991_V5_V6_DIFFERENTIAL_ENABLE | LTC2991_V5_V6_TEMP_ENABLE, LTC2991_V5_V6_DIFFERENTIAL_ENABLE | LTC2991_V5_V6_TEMP_ENABLE,
     };/*housir: 设置为采集电压模式，需要清除的位 */
 #endif
-    uint8_t vn_msb_reg_base = LTC2991_V1_MSB_REG;/*housir: MSB的基地址 */
-
-    uint8_t value = 0;
-    uint8_t write_value = 0x00;
-    uint8_t i =0;
     
 //    volatile unsigned int *pos= NULL;
 //    uint8_t *temp_pos =NULL;
 
-    printk("---> %s\n", __func__);
+//    printk("---> %s\n", __func__);
 
 #if 0 /*housir: FPGA写测试 */
     printk("===> temp write begin\n");
@@ -198,13 +187,14 @@ static int CreatThreadMain(void *v_ptr)
     /*housir: 电压 */
    if  (0 != i2c_write_byte_data(LTC2991_I2C_V_ADDRESS, LTC2991_CHANNEL_ENABLE_REG , 0xf0))
     {
-        printk("write  reg_addr 0x01 error!!!\n");
+        printk("===> %s write  reg_addr 0x01 error!!!\n", __func__);
     }
 /*housir: 温度 */
    if  (0 != i2c_write_byte_data(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CHANNEL_ENABLE_REG , 0xf0))
     {
-        printk("write  reg_addr 0x01 error!!!\n");
+        printk("===> %s write  reg_addr 0x01 error!!!\n", __func__);
     }
+#if 0
 	while(1)
 	{
 //		printk("my thread:current->mm = %p,index = 0x%x\n",current->mm, thread_index++);
@@ -216,6 +206,36 @@ static int CreatThreadMain(void *v_ptr)
 		/*在此可以完成一些监控动作*/
 		/*完成电压监控从LTC2991读取6路电压写入fpga寄存器*/
 
+	}
+#endif
+	return 0;
+}
+
+static ssize_t sensor_read(struct file *filp, char *buffer, size_t count, loff_t *ppos)
+{
+    int index = 0;
+    int thread_index = 0;
+    int16_t adc_code;/*housir: 温度采集到的adc_code或者电压采集到的code */
+    int8_t data_valid;
+    int temperature = 0;
+    int voltage = 0;
+    int8_t ack = 0;
+    uint8_t vn_msb_reg_base = LTC2991_V1_MSB_REG;/*housir: MSB的基地址 */
+
+    uint8_t value = 0;
+    uint8_t write_value = 0x00;
+    uint8_t i =0;
+ //   printk("===> %s\n", __func__);    
+#if  0
+    for( index=0;index<SENSOR_TEMP_TOTAL;index++)
+    {
+        printk("read v%d v%d tem is %d.%d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
+    }
+    for( index=0;index<SENSOR_V_MAX_NUM;index++)
+    {
+        printk("read v%d V is %d.%d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
+    }
+#endif
 #if 1
         vn_msb_reg_base = LTC2991_V1_MSB_REG;/*housir: MSB的基地址 */
 
@@ -233,7 +253,7 @@ static int CreatThreadMain(void *v_ptr)
 
             stasensor_value[index].hvtemp = temperature/10000;
             
-	    stasensor_value[index].lvtemp = (temperature%10000)/100; //- (int)temperature*100;
+	        stasensor_value[index].lvtemp = (temperature%10000)/100; //- (int)temperature*100;
 
  //           printk("kthread : read v%d v%d tem is %d.%.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
 
@@ -272,24 +292,6 @@ static int CreatThreadMain(void *v_ptr)
     }
 
 #endif		
-	}
-	return 0;
-}
-
-static ssize_t sensor_read(struct file *filp, char *buffer, size_t count, loff_t *ppos)
-{
-    int index = 0;
- //   printk("===> %s\n", __func__);    
-#if  0
-    for( index=0;index<SENSOR_TEMP_TOTAL;index++)
-    {
-        printk("read v%d v%d tem is %d.%d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
-    }
-    for( index=0;index<SENSOR_V_MAX_NUM;index++)
-    {
-        printk("read v%d V is %d.%d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
-    }
-#endif
     /*housir:方案一： 将这一片内存copy到用户空间 */
     if(copy_to_user(buffer, (char *)&stasensor_value[0], sizeof(stasensor_value)))
     {
@@ -332,9 +334,9 @@ static __init int ThreadMain_init(void)
 	int result;
     	int err=0;
 
-	printk(KERN_INFO"demo init\n");
-	printk("demo init:current->mm = %p\n",current->mm);
-	printk("demo init:current->active_mm = %p\n",current->active_mm);
+//	printk(KERN_INFO"demo init\n");
+//	printk("demo init:current->mm = %p\n",current->mm);
+//	printk("demo init:current->active_mm = %p\n",current->active_mm);
 
     register_chrdev(MAJOR_NUM, "read_sensor", &sensor_read_ops);
 #if 0
@@ -369,7 +371,8 @@ static __init int ThreadMain_init(void)
 //	adc_setup_cdev(&AdcDevs, 0, &adc_remap_ops);//初始化和添加结构体struct cdev到系统之中
 	/*iomap*/
 #endif
-	kernel_thread(CreatThreadMain, NULL, CLONE_KERNEL|SIGCHLD);
+    CreatThreadMain(NULL);
+//	kernel_thread(CreatThreadMain, NULL, CLONE_KERNEL|SIGCHLD);
 	//kthread_run(noop2,NULL,"mythread");
 	return 0;
 }

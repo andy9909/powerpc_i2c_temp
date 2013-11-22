@@ -163,7 +163,7 @@ static int __devinit lct2991_probe(struct i2c_client *client,
     int ret = 0;
 //    struct lct2991_data *stpdata;
 
-    printk("===> %s\n", __func__);
+    //printk("===> %s\n", __func__);
 
     new_client = client;
     devno = MKDEV(lct2991_major, LCT2991_MINOR);
@@ -197,7 +197,7 @@ static int __devinit lct2991_probe(struct i2c_client *client,
         goto err_cdev_add;
     }
 
-    printk("<=== %s\n", __func__);
+  //  printk("<=== %s\n", __func__);
 
     return 0;
 err_cdev_add:
