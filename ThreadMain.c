@@ -249,7 +249,7 @@ static ssize_t sensor_read(struct file *filp, char *buffer, size_t count, loff_t
             temperature = LTC2991_temperature(adc_code, LTC2991_TEMPERATURE_lsb, 1);
 
             stasensor_value[index].sign = temperature & 0x80000000;
-            temperature &= ~(0x80000000);/*housir: 符号位置0 */
+            temperature = temperature>0 ? temperature:0-temperature;/*housir: 符号位置0 */
 
             stasensor_value[index].hvtemp = temperature/10000;
             
@@ -277,7 +277,7 @@ static ssize_t sensor_read(struct file *filp, char *buffer, size_t count, loff_t
         ack |= LTC2991_adc_read_new_data(LTC2991_I2C_V_ADDRESS, vn_msb_reg_base, &adc_code, &data_valid, LTC2991_V_DELAY_MS);
         voltage = LTC2991_code_to_single_ended_voltage(adc_code, LTC2991_SINGLE_ENDED_lsb); // Converts code to voltage from single-ended lsb
         stasensor_value[ index + SENSOR_TEMP_TOTAL ].sign = voltage & 0x80000000;
-        voltage &= ~(0x80000000);/*housir: 符号位置0 */
+        voltage = voltage>0 ? voltage:0-voltage;/*housir: 符号位置0 */
 
         stasensor_value[index + SENSOR_TEMP_TOTAL].hvtemp = voltage/1000000;
 
@@ -338,7 +338,7 @@ static __init int ThreadMain_init(void)
 //	printk("demo init:current->mm = %p\n",current->mm);
 //	printk("demo init:current->active_mm = %p\n",current->active_mm);
 
-    register_chrdev(MAJOR_NUM, "read_sensor", &sensor_read_ops);
+    register_chrdev(MAJOR_NUM, "read_sensor", &sensor_read_ops);/*housir: 老式接口 里面调用了cdev_add等*/
 #if 0
 	dev_t dev = MKDEV(sensor_major, 0);//将主设备号和次设备号定义到一个dev_t数据类型的结构体之中
 
@@ -360,8 +360,9 @@ static __init int ThreadMain_init(void)
 
 	cdev_init(&sensor_read_cdev, &sensor_read_ops);//初始化结构体struct cdev
 	sensor_read_cdev.owner = THIS_MODULE;
-//	dev->ops = &sensor_read_ops;//给结构体里的ops成员赋初值，这里是对设备操作的具体的实现函数
-	err = cdev_add (&sensor_read_cdev, 0, 1);//将结构提struct cdev添加到系统之中
+//	dev->ops = &sensor_read_ops;//给结构体里的ops成员赋初值，这里是对设备操作的具体的实现函数在cdev_init中已经赋过值了
+	err = cdev_add (&sensor_read_cdev, 0, 1);//将结构提struct cdev添加到系统之中,中间的0不对应该是dev
+	err = cdev_add (&sensor_read_cdev, dev, 1);//将结构提struct cdev添加到系统之中,中间的0不对应该是dev
 	/* Fail gracefully if need be */
 	if (err)
     {
@@ -380,9 +381,10 @@ static __init int ThreadMain_init(void)
 static __exit void ThreadMain_exit(void)
 {
 #if 0
+    cdev_del(&sensor_read_cdev);
 	unregister_chrdev_region(MKDEV(sensor_major, 0), 1);//卸载设备驱动所占有的资源
 #endif
-   unregister_chrdev(MAJOR_NUM, "read_sensor");
+   unregister_chrdev(MAJOR_NUM, "read_sensor");/*housir: 旧式的接口，里面有调用cdev_del */
    printk(KERN_INFO"demo exit\n");
 }
 
