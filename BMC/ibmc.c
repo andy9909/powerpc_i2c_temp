@@ -29,6 +29,7 @@
 #include <linux/route.h>
 #include <sys/statfs.h>
 #include <sys/ioctl.h>
+
 /*housir: 结构体定义 */
 /*FPGA控制命令结构体*/
 typedef struct FPGA_CONTROL_CMD_ST
@@ -196,6 +197,8 @@ static unsigned char vpx3Ssd1GetSlotInfo(void)
         printf("fpgaRegRead\n");
     }
 
+ //   printf("===> %s uiRegValue [0x%x]\n", __func__, uiRegValue);
+
  //   printf("===> %s:uiRegValue [0x%x] \n", __func__, uiRegValue);
 #if 0
     if(ERROR_CHAR != fd)
@@ -250,7 +253,7 @@ static int bmcAutoConfigEth(void)
     /*获取槽位ID和DEVICE_ID*/
     ucSlotInfoReg = vpx3Ssd1GetSlotInfo();
 
-    //printf("===> %s:ucSlotInfoReg [%d] \n", __func__, ucSlotInfoReg);
+ //   printf("===> %s:ucSlotInfoReg [%d] \n", __func__, ucSlotInfoReg);
     /*打桩验证*/
     //	ucSlotInfoReg = 0x74;
     ucDeviceId = (ucSlotInfoReg & 0x60)>> 0x5;
@@ -392,6 +395,7 @@ static int nfsDiskInfoUpdate(void)
     ulTotalMSize = ullTotalSize>> 20;
     ulAvailableMsize = ullAvailableSize >> 20;
 
+ //   printf("Total_size = %llu MB Disk_available = %llu MB \n",ulTotalMSize, ulAvailableMsize); 
     /*将信息刷新到FPAG中IOCTL控制寄存器读写*/
     if (-1 == fpgaRegWrite(FPGA_TOTAL_DISK_INFO_REG, ulTotalMSize))
     {
@@ -418,6 +422,7 @@ static int TempVInfoUpdata(void)
     int dev_fd;
     int i=0;
     int vtemp_v = 0; 
+    int tmp=0;/*housir: 用来存取从fpga读出的数据 */
 
     dev_fd = open("/dev/read_sensor",O_RDWR,S_IRUSR | S_IWUSR);
     if ( dev_fd == -1 ) 
@@ -431,33 +436,43 @@ static int TempVInfoUpdata(void)
     for( index=0;index<SENSOR_TEMP_TOTAL;index++)
     {
         vtemp_v = 0;
- //       printf("read v%d v%d tem is %d.%0.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
-        vtemp_v =  stasensor_value[index].hvtemp*100 +  stasensor_value[index].lvtemp;
+        vtemp_v =  stasensor_value[index].hvtemp<<8 +  stasensor_value[index].lvtemp;
         if (NEGATIVE == stasensor_value[index].sign )
         {
-            vtemp_v *= -1;
+            vtemp_v &= 0x8000;
         }
+ //      printf("read v%d v%d tem is %d.%0.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
         if (-1 == fpgaRegWrite(FPGA_TEMP0_REG + index*sizeof(unsigned int), vtemp_v))
         {
             printf("fpgaRegWrite FPGA_TEMP0_REG error!\n");
         }       
+ //       fpgaRegRead(FPGA_TEMP0_REG + index*sizeof(unsigned int), &tmp);
+ //       printf("read  from fpga 0x%x\n", tmp);
+   //     tmp = 0;
+
 
     }
 
     for( index=0;index<SENSOR_V_MAX_NUM;index++)
     {
         vtemp_v = 0;
- //       printf("read v%d V is %d.%0.2d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
-        vtemp_v =  stasensor_value[index].hvtemp*100 +  stasensor_value[index].lvtemp;
+        vtemp_v =  stasensor_value[index + SENSOR_TEMP_TOTAL].hvtemp<<8 +  stasensor_value[index + SENSOR_TEMP_TOTAL].lvtemp;
+	//printf("stasensor_value[index].hvtemp [%d], ltemp [%d]\n",stasensor_value[index].hvtemp, stasensor_value[index].lvtemp );
+
         if (NEGATIVE == stasensor_value[index].sign )
         {
-            vtemp_v *= -1;
+            vtemp_v &= 0x8000;
         }
+       //printf("read v%d V is %d.%0.2d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
 
         if (-1 == fpgaRegWrite(FPGA_VOLT0_REG + index*sizeof(unsigned int), vtemp_v))
         {
             printf("fpgaRegWrite FPGA_TEMP0_REG error!\n");
         }      
+	//printf("vtemp_v [0x%x]\n", vtemp_v);
+        //fpgaRegRead(FPGA_VOLT0_REG + index*sizeof(unsigned int), &tmp);
+        //printf("read  from fpga 0x%x\n", tmp);
+        //tmp = 0;
     }
 
     close(dev_fd);

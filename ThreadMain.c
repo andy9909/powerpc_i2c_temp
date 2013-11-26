@@ -55,8 +55,6 @@
 #define V_6_ADDR            /*  */
 #endif
 
-MODULE_LICENSE("Dual BSD/GPL");
-MODULE_AUTHOR("Kozo");
 
 /*housir: 常量 */
  const int LTC2991_SINGLE_ENDED_lsb = 305;/*housir: 0.000305 * 13bit adc_code */
@@ -87,7 +85,7 @@ static struct cdev sensor_read_cdev;
 
 /*housir: 函数声明 */
 static int sensor_open(struct inode *inode, struct file *filp);
-static ssize_t sensor_read(struct file *filp, char *buffer, size_t count, loff_t *ppos);
+static ssize_t sensor_read(struct file *filp, char __user *buffer, size_t count, loff_t *ppos);
    
 
 static struct file_operations sensor_read_ops = {
@@ -211,7 +209,7 @@ static int CreatThreadMain(void *v_ptr)
 	return 0;
 }
 
-static ssize_t sensor_read(struct file *filp, char *buffer, size_t count, loff_t *ppos)
+static ssize_t sensor_read(struct file *filp, char __user *buffer, size_t count, loff_t *ppos)
 {
     int index = 0;
     int thread_index = 0;
@@ -328,11 +326,11 @@ static void sensor_setup_cdev(struct cdev *dev, int minor,
 }
 #endif
 
-static __init int ThreadMain_init(void)
+static  int __init ThreadMain_init(void)
 {
 
 	int result;
-    	int err=0;
+    int err=0;
 
 //	printk(KERN_INFO"demo init\n");
 //	printk("demo init:current->mm = %p\n",current->mm);
@@ -378,7 +376,7 @@ static __init int ThreadMain_init(void)
 	return 0;
 }
 
-static __exit void ThreadMain_exit(void)
+static  void __exit ThreadMain_exit(void)
 {
 #if 0
     cdev_del(&sensor_read_cdev);
@@ -390,3 +388,6 @@ static __exit void ThreadMain_exit(void)
 
 module_init(ThreadMain_init);
 module_exit(ThreadMain_exit);
+
+MODULE_LICENSE("Dual BSD/GPL");
+MODULE_AUTHOR("housir");

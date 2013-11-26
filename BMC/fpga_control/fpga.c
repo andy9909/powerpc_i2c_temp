@@ -10,18 +10,18 @@ MODULE_LICENSE("GPL");
  
 #define MAJOR_NUM 249  //....
 
-#define FPGA_TEMP_BASE_ADDR          0xf0000000             /*FPGAÐèÒªÐ´µÄ»ùµØÖ·  */
-#define FPGA_TEMP_WRITE_SIZE         4*4            /*  4¸öÎÂ¶È¼Ä´æÆ÷ */
-#define FPGA_V_WRITE_SIZE         6*4            /*  6¸öµçÑ¹¼Ä´æÆ÷*/
-#define FPGA_TEMP_ADDR   0x7c            /*0x7c - 0x8f  FPGA localbusÉÏµÄ´æ·ÅÎÂ¶È ÖµµÄÇøÓò£¬Ã¿¸ö32Î»¼Ä´æÆ÷ Ö»´æÈ¡ÆäµÍÎ»£¬ÎªÁËÒ»´ÎÐ´Èë ¶Á³ö.Ö»ÓÃ16Î»£¬Ôò¸³ÖµµÄÊ±ºòµÃÏÈ¶ÁÔÙ»ò¸³Öµ*/
+#define FPGA_TEMP_BASE_ADDR          0xf0000000             /*FPGA??ÒªÐ´?Ä»???Ö·  */
+#define FPGA_TEMP_WRITE_SIZE         4*4            /*  4???Â¶È¼Ä´??? */
+#define FPGA_V_WRITE_SIZE         6*4            /*  6????Ñ¹?Ä´???*/
+#define FPGA_TEMP_ADDR   0x7c            /*0x7c - 0x8f  FPGA localbus?ÏµÄ´????Â¶? Öµ????????Ã¿??32Î»?Ä´??? Ö»??È¡????Î»??Îª??Ò»??Ð´?? ?Á³?.Ö»??16Î»??????Öµ??Ê±?????È¶??Ù»???Öµ*/
 #define FPGA_V_ADDR  0xa0            /*0xa0 -0xbf */
 #if 0 
 struct {
     volatile int32_t * ptemp_addr,
     volatile int32_t * pv_addr,
-}st_fpga_addr_base;/* ÐèÒªÐ´ÈëµÄÄÚ´æÎ»ÖÃ */
+}st_fpga_addr_base;/* ??ÒªÐ´?????Ú´?Î»?? */
 #endif
-/* È«²¿±äÁ¿ FPGA Ó³ÉäµÄµØÖ· */ 
+/* È«????Á¿ FPGA Ó³???Äµ?Ö· */ 
 volatile unsigned int * guipFpga;
 
 
@@ -38,7 +38,7 @@ struct file_operations fpga_fops =
   write: fpga_info_write,
   unlocked_ioctl: fpga_info_ioctl,
 };
-static char global_var[20] = {1,2,3,4,5,0};   //“globalvar”.......
+static char global_var[20] = {1,2,3,4,5,0};   //?globalvar?.......
 
 int static fpga_info_open(struct inode *pinode, struct file *pfile)
 {
@@ -71,14 +71,14 @@ static void __exit fpga_exit(void)
 //     printk("fpga un register success");
 }
 /*****************************************************************************
- º¯ÊýÃû : fpga_info_ioctl
- º¯ÊýÃèÊö : ¿ØÖÆÊµÏÖFPGA ¼Ä´æÆ÷µÄWORD ¶ÁÐ´²Ù×÷
- ÊäÈë²ÎÊý : 
- Êä³ö²ÎÊý :
- ·µ»ØÖµ :
- ×÷Õß:Äô·É
- Ê±¼ä:2013-11-19
-  ±¸×¢:
+ ?????? : fpga_info_ioctl
+ ???????? : ????Êµ??FPGA ?Ä´?????WORD ??Ð´????
+ ???????? : 
+ ???????? :
+ ????Öµ :
+ ????:????
+ Ê±??:2013-11-19
+  ??×¢:
 
 *****************************************************************************/
 
@@ -86,8 +86,8 @@ static int fpga_info_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 {
 	FPGA_CONTROL_CMD *pstFpgaCtl;
  	unsigned short usRegAddr;
-    volatile int32_t * pmode_base_addr;/* Ð´ÈëÄÚ´æµÄ»ùµØÖ· */
-    unsigned short offset = 0;/* Ö¸¶¨¼Ä´æÆ÷ ÔÚµ±Ç°ÄÚ´æµÄÆ«ÒÆÖµ*/
+    volatile uint32_t * pmode_base_addr;/* Ð´???Ú´??Ä»???Ö· */
+    unsigned short offset = 0;/* Ö¸???Ä´??? ?Úµ?Ç°?Ú´???Æ«??Öµ*/
 	unsigned int uiValue;
 	int ret = 0;
 	pstFpgaCtl = (FPGA_CONTROL_CMD*)&cmd;
@@ -119,7 +119,7 @@ static int fpga_info_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 
 
 #if 0
-    /* ÅÐ¶Ï ÊÇÏòÄÄ×é (ÎÂ¶È£¬µçÑ¹£¬ÆäËû¡£¡£¡£)ÄÚ´æÖÐÐ´ÖµµÄÆ«ÒÆ»ùµØÖ· */
+    /* ?Ð¶? ???????? (?Â¶È£???Ñ¹?????û¡£¡£??)?Ú´???Ð´Öµ??Æ«?Æ»???Ö· */
     switch (usRegAddr)
     {
         case FPGA_TEMP_ADDR:
@@ -134,22 +134,25 @@ static int fpga_info_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
             break;
     }
 #endif
-//    printk("===> %s cmd [0x%x] pstFpgaCtl->ucCmd [0x%x] offset[%d]\n", __func__, cmd, pstFpgaCtl->ucCmd, offset);
+    //printk("===> %s cmd [0x%x] pstFpgaCtl->ucCmd [0x%x] offset[%d]\n", __func__, cmd, pstFpgaCtl->ucCmd, offset);
 	switch (pstFpgaCtl->ucCmd)
 	{
 		case FPGA_WRITE:
 		{
-    	/*ÔÚ´ËÊµÏÖIOREMAPÐ´,Ð´²Ù×÷Ö±½Ó¸³Öµ*/
+    	/*?Ú´?Êµ??IOREMAPÐ´,Ð´????Ö±?Ó¸?Öµ*/
 
+			ret = __get_user(uiValue, (unsigned int *)arg);
             pmode_base_addr[offset] = uiValue; 
+  //  	    printk("offset [%d] [uiValue][%x]\n", offset, uiValue );
 			uiValue = 0;
 			break;
 		}
 		case FPGA_READ:
 		{
-            /*ÔÚ´ËÊµÏÖIOREMAP¶ÁÈ¡µ¥¸ö¼Ä´æÆ÷²Ù×÷£¬¶Á²Ù×÷´«µØÖ·£¬µØÖ·¸³Öµ*/
+            /*?Ú´?Êµ??IOREMAP??È¡?????Ä´??????÷£¬¶Á²??÷´«µ?Ö·????Ö·??Öµ*/
            // printk("ioctl FPGA_READ...\n");
             uiValue =  (unsigned int)pmode_base_addr[offset];
+//		    printk("===> %s Value [%x]\n", __func__, uiValue);
 			ret = __put_user(uiValue, (unsigned int *)arg);
   //           printk("ret 0x%x uiValue [0x%x]\n", ret, uiValue);
 			break;
@@ -161,14 +164,14 @@ static int fpga_info_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 //    printk("<=== %s\n", __func__);
 }
 /*****************************************************************************
- º¯ÊýÃû : fpga_info_read
- º¯ÊýÃèÊö : ÊµÏÖFPGA ¼Ä´æÆ÷µÄ¶Á²Ù×÷
- ÊäÈë²ÎÊý : 
- Êä³ö²ÎÊý :
- ·µ»ØÖµ :
- ×÷Õß:Äô·É
- Ê±¼ä:2013-11-19
-  ±¸×¢:
+ ?????? : fpga_info_read
+ ???????? : Êµ??FPGA ?Ä´????Ä¶Á²???
+ ???????? : 
+ ???????? :
+ ????Öµ :
+ ????:????
+ Ê±??:2013-11-19
+  ??×¢:
 
 *****************************************************************************/
 static ssize_t fpga_info_read(struct file *filp, char *buf, size_t len, 
@@ -182,14 +185,14 @@ loff_t *off)
  return sizeof(global_var);
 }
 /*****************************************************************************
- º¯ÊýÃû : fpga_info_write
- º¯ÊýÃèÊö : ÊµÏÖFPGA ¼Ä´æÆ÷µÄÐ´²Ù×÷
- ÊäÈë²ÎÊý : 
- Êä³ö²ÎÊý :
- ·µ»ØÖµ :
- ×÷Õß:Äô·É
- Ê±¼ä:2013-11-19
-  ±¸×¢:
+ ?????? : fpga_info_write
+ ???????? : Êµ??FPGA ?Ä´?????Ð´????
+ ???????? : 
+ ???????? :
+ ????Öµ :
+ ????:????
+ Ê±??:2013-11-19
+  ??×¢:
 
 *****************************************************************************/ 
 static ssize_t fpga_info_write(struct file *filp, const char *buf, size_t len
