@@ -245,9 +245,16 @@ static ssize_t sensor_read(struct file *filp, char __user *buffer, size_t count,
             ack = LTC2991_adc_read_new_data(LTC2991_I2C_TEMP_ADDRESS, vn_msb_reg_base, &adc_code, &data_valid, LTC2991_TEMP_DELAY_MS);
             /* Converts code to temperature from adc code and temperature lsb */
             temperature = LTC2991_temperature(adc_code, LTC2991_TEMPERATURE_lsb, 1);
-
-            stasensor_value[index].sign = temperature & 0x80000000;
-            temperature = temperature>0 ? temperature:0-temperature;/*housir: ·ûºÅÎ»ÖÃ0 */
+	   
+            if (temperature < 0)
+	    {
+            	stasensor_value[index].sign = NEGATIVE;
+                temperature = 0-temperature;/*housir: ·ûºÅÎ»ÖÃ0 */
+	    }
+	    else
+	    {
+            	stasensor_value[index].sign = POSITIVE;
+	    }
 
             stasensor_value[index].hvtemp = temperature/10000;
             
@@ -274,9 +281,16 @@ static ssize_t sensor_read(struct file *filp, char __user *buffer, size_t count,
 
         ack |= LTC2991_adc_read_new_data(LTC2991_I2C_V_ADDRESS, vn_msb_reg_base, &adc_code, &data_valid, LTC2991_V_DELAY_MS);
         voltage = LTC2991_code_to_single_ended_voltage(adc_code, LTC2991_SINGLE_ENDED_lsb); // Converts code to voltage from single-ended lsb
-        stasensor_value[ index + SENSOR_TEMP_TOTAL ].sign = voltage & 0x80000000;
-        voltage = voltage>0 ? voltage:0-voltage;/*housir: ·ûºÅÎ»ÖÃ0 */
-
+	
+	if ( voltage < 0)
+        {
+             stasensor_value[ index + SENSOR_TEMP_TOTAL ].sign = NEGATIVE;
+             voltage = 0-voltage;/*housir: ·ûºÅÎ»ÖÃ0 */
+        }
+	else
+	{
+             stasensor_value[ index + SENSOR_TEMP_TOTAL ].sign = POSITIVE;
+	}
         stasensor_value[index + SENSOR_TEMP_TOTAL].hvtemp = voltage/1000000;
 
  //       printk("voltage v[%d] : [%d]\n", index+1, voltage);
