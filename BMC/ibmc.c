@@ -298,10 +298,10 @@ static int bmcAutoConfigEth(void)
     }
 }
 /**
- * @brief 
+ * @brief 从fpga指定地址中读取数据
  *
- * @param addr
- * @param Value
+ * @param addr 需要读的fpga中的地址         [IN]
+ * @param Value 读出的值                    [OUT]
  *
  * @return 
  */
@@ -315,14 +315,6 @@ static int fpgaRegRead(unsigned int addr, unsigned int * Value)
         .ucReseved = 0,
         .ucCmd     = FPGA_REG_READ,
     };
-    //    cmd = addr << 16  & 0xffffff00;
-    //	fd = open("/dev/fpga_reg",O_RDWR,S_IRUSR | S_IWUSR);
-    //printf("===> %s *(int *)&stcmd [0x%x], stcmd.usRegAddr [0x%x], stcmd.ucCmd [0x%x]\n", __func__
-    //       ,*(int *)&stcmd, stcmd.usRegAddr, stcmd.ucCmd);
-    // printf("sizeof(FPGA_CONTROL_CMD) [%d] &stcmd.usRegAddr [0x%x],  &stcmd.ucCmd [0x%x]\n", sizeof(stcmd), &stcmd.usRegAddr, &stcmd.ucCmd);
-
-    //    if(ioctl(gfd_fpga, *(int *)&cmd, &uiRegValue) < 0)
-    //    if(ioctl(gfd_fpga, 3, &uiRegValue) < 0)
     if(ioctl(gfd_fpga, *(int *)&stcmd, &uiRegValue) < 0)
     {
         uiRegValue = -1;
@@ -336,10 +328,10 @@ static int fpgaRegRead(unsigned int addr, unsigned int * Value)
 }
 
 /**
- * @brief 
+ * @brief  向fpga中指定的位置写值
  *
- * @param addr
- * @param Value
+ * @param addr          [IN]
+ * @param Value         [IN]
  *
  * @return 
  */
@@ -351,7 +343,11 @@ static int fpgaRegWrite(unsigned int addr, unsigned int  Value)
         .usRegAddr = (unsigned short)addr,
         .ucCmd     = FPGA_REG_WRITE,
     };
-
+    
+    if (addr > 0x100)
+    {
+        printf("error ===> %s addr [0x%x] is too large!\n", __func__, addr);
+    }
     //	fd = open("/dev/fpga_reg",O_RDWR,S_IRUSR | S_IWUSR);
     if(ioctl(gfd_fpga, *(int *)&stcmd, &uiRegValue) < 0)
     {
@@ -439,7 +435,7 @@ static int TempVInfoUpdata(void)
         vtemp_v =  stasensor_value[index].hvtemp<<8 |  stasensor_value[index].lvtemp;
         if (NEGATIVE == stasensor_value[index].sign )
         {
-            vtemp_v &= 0x8000;
+            vtemp_v &= 0x8000;/*housir: 按照存储规范 最高位为符号位 */
         }
  //      printf("read v%d v%d tem is %d.%0.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
         if (-1 == fpgaRegWrite(FPGA_TEMP0_REG + index*sizeof(unsigned int), vtemp_v))
@@ -461,7 +457,7 @@ static int TempVInfoUpdata(void)
 
         if (NEGATIVE == stasensor_value[index].sign )
         {
-            vtemp_v &= 0x8000;
+            vtemp_v &= 0x8000;/*housir: 按照存储规范 最高位为符号位 */
         }
        //printf("read v%d V is %d.%0.2d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
 
