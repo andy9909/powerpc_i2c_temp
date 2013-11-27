@@ -436,7 +436,7 @@ static int TempVInfoUpdata(void)
     for( index=0;index<SENSOR_TEMP_TOTAL;index++)
     {
         vtemp_v = 0;
-        vtemp_v =  stasensor_value[index].hvtemp<<8 +  stasensor_value[index].lvtemp;
+        vtemp_v =  stasensor_value[index].hvtemp<<8 |  stasensor_value[index].lvtemp;
         if (NEGATIVE == stasensor_value[index].sign )
         {
             vtemp_v &= 0x8000;
@@ -456,7 +456,7 @@ static int TempVInfoUpdata(void)
     for( index=0;index<SENSOR_V_MAX_NUM;index++)
     {
         vtemp_v = 0;
-        vtemp_v =  stasensor_value[index + SENSOR_TEMP_TOTAL].hvtemp<<8 +  stasensor_value[index + SENSOR_TEMP_TOTAL].lvtemp;
+        vtemp_v =  stasensor_value[index + SENSOR_TEMP_TOTAL].hvtemp<<8 |  stasensor_value[index + SENSOR_TEMP_TOTAL].lvtemp;
 	//printf("stasensor_value[index].hvtemp [%d], ltemp [%d]\n",stasensor_value[index].hvtemp, stasensor_value[index].lvtemp );
 
         if (NEGATIVE == stasensor_value[index].sign )

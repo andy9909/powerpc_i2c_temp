@@ -13,3 +13,8 @@
  
 应用层ibcm.c从内核驱动中ThreadMain.c中的读函数获取温度电压值，驱动ThreadMain.c中的read调用接口LTC2991.c。LTC2991.c中调用i2c驱动 i2c_ltc2991.c中的i2c读写的接口，向驱动ThreadMain提供对传感器芯片的操作接口。LTC2991.C作为中间层（封装的API）
    ThreadMain是字符驱动，fpga是字符驱动，LTC2991.c是接口封装，i2c_ltc2991.c是对i2c总线上ltc2991芯片读写的字符驱动.
+
+   每台设备上根据槽位生成指定的ip，利用ip作为嵌入式设备的互联的地址，
+嵌入式系统中的互联，互联技术比较:
+         tcp/ip以太网，PCI Express    SRIO  
+打包效率    79%         82%         92%-94%

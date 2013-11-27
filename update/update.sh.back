@@ -1,34 +1,30 @@
 #!/bin/sh
-#è‡ªåŠ¨å‡çº§æ ¹æ–‡ä»¶ç³»ç»Ÿ å†…æ ¸é•œåƒ å’Œ è®¾å¤‡ç›®å½•æ ‘æ–‡ä»¶çš„ çš„è„šæœ¬ é€šè¿‡
-#é€šè¿‡/proc/versionnä¸­çš„ä¿¡æ¯  åˆ©ç”¨/toolç›®å½•ä¸­çš„çƒ§å†™å·¥å…·å¯¹flasdè¿›è¡Œçƒ§å†™ (/dev/mtd2)
+#×Ô¶¯Éý¼¶¸ùÎÄ¼þÏµÍ³ ÄÚºË¾µÏñ ºÍ Éè±¸Ä¿Â¼Ê÷ÎÄ¼þµÄ µÄ½Å±¾ Í¨¹ý
+#Í¨¹ý/proc/versionnÖÐµÄÐÅÏ¢  ÀûÓÃ/toolÄ¿Â¼ÖÐµÄÉÕÐ´¹¤¾ß¶Ôflasd½øÐÐÉÕÐ´ (/dev/mtd2)
 filepath="/home/work/NFS/update/"
-toolspath="/tools/"
-#filepath="/mnt/version-release/test"
-path=$(pwd)
-uImage="$path/uImage"
-dtb="/$path/sbc8548.dtb"
-rootfs="/$path/rootfs.ext2.gz"
-path_rootfs_ver="/version/version"
+uImage="/$filepath/uImage"
+dtb="/$filepath/sbc8548.dtb"
+rootfs="/$filepath/rootfs.ext2.gz"
+path_rootfs_ver="/rootfs_info/version"
 echo -e "\033[41;36m Warning: update will take up several minutes,please keep patience ......do not plug out power!!!!!! \033[0m "
-sudo chmod 777 $(pwd)
-tar zxvf vpx3-ssd1*
+sleep 1
 #check file path Ok
-if [ ! -d "$path" ];
+if [ ! -d "$filepath" ];
 then
 echo "file path not exist... update fail!!!exit"
 exit
 fi
 #check kernel image version
 echo "check kernel image version......"
-cat /proc/version  >/tmp/test.txt
+cat /proc/version  >test.txt
 sleep 1
-cat /tmp/test.txt |while read line
+cat test.txt |while read line
 do 
 kernel_version=`awk 'BEGIN {split("'"$line"'",arr);print arr[3]}'`
 echo -e "\033[40;36mkernel_version:\033[0m $kernel_version"
 cat version |while read line
 do
-new_kernel_version=`awk 'BEGIN {split("'"$line"'",arr);print arr[2]}'`
+new_kernel_version=`awk 'BEGIN {split("'"$line"'",arr);print arr[5]}'`
 echo -e "\033[40;36mnew_kernel_version:\033[0m $new_kernel_version"
 if [ $kernel_version != $new_kernel_version ];
 then
@@ -43,29 +39,27 @@ else
 echo "file uImage check Ok"
 fi
 #update uImage
-/$toolspath/flash_eraseall /dev/mtd3
-echo "eraseall image partition success"
-/$toolspath/flashcp uImage /dev/mtd3
-echo "update kernel image success"
-rm /tmp/test.txt
+/tools/flash_eraseall /dev/mtd2
+/tools/flash_cp uImage /dev/mtd2
+rm test.txt
 else
 echo "version $kernel_version is the latest..... skip update!"
 image_update_flag="FALSE"
-rm /tmp/test.txt
+rm test.txt
 fi
 done
 done
 #check rootfs_path_version
 if [  ! -f "$path_rootfs_ver" ] ;
 then
-mkdir /version
-touch /version/version
+mkdir /rootfs_info
+touch /rootfs_info/version
 echo "original version" > $path_rootfs_ver
 fi
 #check rootfs_version
-cat  /version/version |while read line
+cat  /rootfs_info/version |while read line
 do
-rootfs_version=`awk 'BEGIN {split("'"$line"'",arr);print arr[2]}'`
+rootfs_version=`awk 'BEGIN {split("'"$line"'",arr);print arr[1]}'`
 echo -e "\033[40;36mrootfs_version:\033[0m $rootfs_version"
 sleep 1
 cat version |while read line
@@ -84,10 +78,8 @@ exit
 else
 echo "file rootfs check ok"
 fi
-/$toolspath/flash_eraseall /dev/mtd1
-echo "earse partition rootfs success"
-/$toolspath/flashcp rootfs.ext2.gz /dev/mtd1
-echo "update file system success"
+/tools/flash_eraseall /dev/mtd1
+/tools/flash_cp rootfs.ext2.gz /dev/mtd1
 else
 echo "version $rootfs_version is the latest..... skip update!"
 rootfs_update_flag="FALSE"
@@ -102,12 +94,8 @@ exit
 else
 echo "file sbc8548.dtb check ok"
 #update DTB
-/$toolspath/flash_eraseall /dev/mtd2
-echo "earse partition dtb success"
-/$toolspath/flashcp sbc8548.dtb /dev/mtd2
-echo "update configre file success"
+/tools/flash_eraseall /dev/mtd3
+/tools/flash_cp sbc8548.dtb /dev/mtd3
 fi
 sleep 1
-#rm -rf sbc8548.dtb uImage rootfs* version
-rm -rf /tmp/*
 echo "update done"
