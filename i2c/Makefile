@@ -1,7 +1,7 @@
 # Comment/uncomment the following line to disable/enable debugging
 DEBUG = y
 PLATFORM = PowerPC
-INCLUDE: = ../include
+INCLUDE := /home/work/i2c_housir/ThreadMain/include/
 #LCT2991_DIR = ./LTC2991
 #>>>>>>>>>>>>>>>>>>>>>>>
 ifeq ($(PLATFORM),PowerPC)   
@@ -21,6 +21,7 @@ else
 endif
 
 EXTRA_CFLAGS += $(DEBFLAGS)
+EXTRA_CFLAGS += -I$(INCLUDE)
 #EXTRA_CFLAGS += -I$(LCT2991_DIR)
 #export EXTRA_CFLAGS
 #CFLAGS += -I..

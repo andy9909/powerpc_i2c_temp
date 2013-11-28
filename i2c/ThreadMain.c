@@ -26,6 +26,7 @@
 
 #include "i2c_ltc2991.h"
 #include "LTC2991.h"
+#include "vpx3_prt_include.h"
 
 #define FPGA_TEMP_BASE_ADDR          0xf0000000             /*FPGA需要读的地址  */
 #define FPGA_TEMP_WRITE_SIZE         4*4            /*  */
@@ -96,7 +97,7 @@ static struct file_operations sensor_read_ops = {
 
 static int sensor_open(struct inode *inode, struct file *filp)
 {
-//    printk("===> %s\n", __func__);
+//    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("===> %s\n", __func__);
     return 0;
 }
 /*************************************************************
@@ -128,28 +129,28 @@ static int CreatThreadMain(void *v_ptr)
 //    volatile unsigned int *pos= NULL;
 //    uint8_t *temp_pos =NULL;
 
-//    printk("---> %s\n", __func__);
+//    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("---> %s\n", __func__);
 
 #if 0 /*housir: FPGA写测试 */
-    printk("===> temp write begin\n");
+    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("===> temp write begin\n");
     pos = (unsigned int *)ioremap(FPGA_TEMP_BASE_ADDR + 0x7c, FPGA_TEMP_WRITE_SIZE);
 
     for (i=0;i<FPGA_TEMP_WRITE_SIZE;i++)
     {
         *pos = i;
-        printk("0x%x",*pos);
+        PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("0x%x",*pos);
     }
-    printk("\n<=== temp write over\n");
+    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("\n<=== temp write over\n");
 
-    printk("===> v fpga addr write begin\n");
+    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("===> v fpga addr write begin\n");
     pos = (unsigned int *)ioremap(FPGA_TEMP_BASE_ADDR + 0xa0, FPGA_V_WRITE_SIZE);
 
     for (i=0;i<FPGA_V_WRITE_SIZE;i++)
     {
         *pos = i;
-        printk("0x%x",*pos);
+        PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("0x%x",*pos);
     }
-    printk("\n<=== v fpga addr write over\n");
+    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("\n<=== v fpga addr write over\n");
  
     temp_pos = pos;
 #endif
@@ -157,21 +158,21 @@ static int CreatThreadMain(void *v_ptr)
 	/*在此完成一些初始化动作*/
 /*housir: 一次设置多次读取,是不是采集到的值太早，设置的太过频繁，导致读出的 数据为0 */
     i2c_read_byte_data(0x4d, LTC2991_CONTROL_V5678_REG, &value);
-    printk("before set LTC2991_CONTROL_V5678_REG %d\n", value);
+    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("before set LTC2991_CONTROL_V5678_REG %d\n", value);
     value = 0;
     LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CONTROL_V5678_REG, 
             LTC2991_V7_V8_TEMP_ENABLE | LTC2991_V5_V6_TEMP_ENABLE, 0x00);
     i2c_read_byte_data(0x4d, LTC2991_CONTROL_V5678_REG, &value);
-    printk("after set LTC2991_CONTROL_V5678_REG %d\n", value);
+    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("after set LTC2991_CONTROL_V5678_REG %d\n", value);
 
     value = 0;
     i2c_read_byte_data(0x4d, LTC2991_CONTROL_V1234_REG, &value);
-    printk("before set LTC2991_CONTROL_V1234_REG %d\n", value);
+    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("before set LTC2991_CONTROL_V1234_REG %d\n", value);
     value = 0;
     LTC2991_register_set_clear_bits(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CONTROL_V1234_REG, 
             LTC2991_V1_V2_TEMP_ENABLE | LTC2991_V3_V4_TEMP_ENABLE, 0x00);
     i2c_read_byte_data(0x4d, LTC2991_CONTROL_V1234_REG, &value);
-    printk("after set LTC2991_CONTROL_V1234_REG %d\n", value);
+    PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("after set LTC2991_CONTROL_V1234_REG %d\n", value);
 
 #endif
     ack |= LTC2991_register_set_clear_bits(LTC2991_I2C_V_ADDRESS, LTC2991_CONTROL_V1234_REG, 0x00, LTC2991_V1_V2_DIFFERENTIAL_ENABLE | LTC2991_V1_V2_TEMP_ENABLE | LTC2991_V3_V4_DIFFERENTIAL_ENABLE | LTC2991_V3_V4_TEMP_ENABLE );
@@ -185,18 +186,18 @@ static int CreatThreadMain(void *v_ptr)
     /*housir: 电压 */
    if  (0 != i2c_write_byte_data(LTC2991_I2C_V_ADDRESS, LTC2991_CHANNEL_ENABLE_REG , 0xf0))
     {
-        printk("===> %s write  reg_addr 0x01 error!!!\n", __func__);
+        PRT_KTEMP_V_COLLECTION_ERROR(("===> %s write  reg_addr 0x01 error!!!\n", __func__));
     }
 /*housir: 温度 */
    if  (0 != i2c_write_byte_data(LTC2991_I2C_TEMP_ADDRESS, LTC2991_CHANNEL_ENABLE_REG , 0xf0))
     {
-        printk("===> %s write  reg_addr 0x01 error!!!\n", __func__);
+        PRT_KTEMP_V_COLLECTION_ERROR(("===> %s write  reg_addr 0x01 error!!!\n", __func__));
     }
 #if 0
 	while(1)
 	{
-//		printk("my thread:current->mm = %p,index = 0x%x\n",current->mm, thread_index++);
-//		printk("my thread:current->active_mm = %p\n",current->active_mm);
+//		PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("my thread:current->mm = %p,index = 0x%x\n",current->mm, thread_index++);
+//		PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("my thread:current->active_mm = %p\n",current->active_mm);
 		set_current_state(TASK_INTERRUPTIBLE);
 		/*指定周期内将线程唤醒*/
 		schedule_timeout(10*HZ);
@@ -223,15 +224,15 @@ static ssize_t sensor_read(struct file *filp, char __user *buffer, size_t count,
     uint8_t value = 0;
     uint8_t write_value = 0x00;
     uint8_t i =0;
- //   printk("===> %s\n", __func__);    
+ //   PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("===> %s\n", __func__);    
 #if  0
     for( index=0;index<SENSOR_TEMP_TOTAL;index++)
     {
-        printk("read v%d v%d tem is %d.%d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
+        PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("read v%d v%d tem is %d.%d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
     }
     for( index=0;index<SENSOR_V_MAX_NUM;index++)
     {
-        printk("read v%d V is %d.%d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
+        PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("read v%d V is %d.%d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
     }
 #endif
 #if 1
@@ -260,7 +261,7 @@ static ssize_t sensor_read(struct file *filp, char __user *buffer, size_t count,
             
 	        stasensor_value[index].lvtemp = (temperature%10000)/100; //- (int)temperature*100;
 
- //           printk("kthread : read v%d v%d tem is %d.%.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
+ //           PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("kthread : read v%d v%d tem is %d.%.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp ));
 
 
             temperature = 0;
@@ -293,11 +294,11 @@ static ssize_t sensor_read(struct file *filp, char __user *buffer, size_t count,
 	}
         stasensor_value[index + SENSOR_TEMP_TOTAL].hvtemp = voltage/1000000;
 
- //       printk("voltage v[%d] : [%d]\n", index+1, voltage);
+ //       PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("voltage v[%d] : [%d]\n", index+1, voltage));
 
         stasensor_value[index + SENSOR_TEMP_TOTAL].lvtemp = (voltage%1000000)/10000; //- (int)temperature*100;
         
-        //printk("kthread : read v%d V is %d.%0.2d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
+        PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("kthread : read v%d V is %d.%0.2d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp));
         adc_code = 0;
         voltage = 0;
         vn_msb_reg_base += 0x02;/*housir: v(1-6)相邻地址的增量:0x02 */
@@ -317,7 +318,7 @@ static ssize_t sensor_read(struct file *filp, char __user *buffer, size_t count,
     }   
 #endif
 
- //   printk("<=== %s\n", __func__);    
+   PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("<=== %s\n", __func__));    
 }
 #if 0
 /*
@@ -335,7 +336,7 @@ static void sensor_setup_cdev(struct cdev *dev, int minor,
 	/* Fail gracefully if need be */
 	if (err)
     {
-		printk (KERN_NOTICE "Error %d adding adc %d", err, minor);
+		PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO, (KERN_NOTICE "Error %d adding adc %d", err, minor);
     }
 }
 #endif
@@ -346,9 +347,9 @@ static  int __init ThreadMain_init(void)
 	int result;
     int err=0;
 
-//	printk(KERN_INFO"demo init\n");
-//	printk("demo init:current->mm = %p\n",current->mm);
-//	printk("demo init:current->active_mm = %p\n",current->active_mm);
+//	PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,(KERN_INFO"demo init\n");
+//	PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("demo init:current->mm = %p\n",current->mm);
+//	PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("demo init:current->active_mm = %p\n",current->active_mm);
 
     register_chrdev(MAJOR_NUM, "read_sensor", &sensor_read_ops);/*housir: 老式接口 里面调用了cdev_add等*/
 #if 0
@@ -378,7 +379,7 @@ static  int __init ThreadMain_init(void)
 	/* Fail gracefully if need be */
 	if (err)
     {
-		printk (KERN_NOTICE "Error %d \n", err);
+		PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO, (KERN_NOTICE "Error %d \n", err);
     }
     
 //	adc_setup_cdev(&AdcDevs, 0, &adc_remap_ops);//初始化和添加结构体struct cdev到系统之中
@@ -397,7 +398,7 @@ static  void __exit ThreadMain_exit(void)
 	unregister_chrdev_region(MKDEV(sensor_major, 0), 1);//卸载设备驱动所占有的资源
 #endif
    unregister_chrdev(MAJOR_NUM, "read_sensor");/*housir: 旧式的接口，里面有调用cdev_del */
-   printk(KERN_INFO"demo exit\n");
+   PRT_KTEMP_V_COLLECTION_DEBUG(K_DEBUG_INFO,("demo exit\n"));
 }
 
 module_init(ThreadMain_init);

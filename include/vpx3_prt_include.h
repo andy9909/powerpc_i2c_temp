@@ -20,6 +20,7 @@
 #ifndef __VPX3_PRT_INCLUDE_H
 #define __VPX3_PRT_INCLUDE_H
 
+#define DBG__KERNEL
 /*housir: 驱动调试开关 */
 /*内核回显调用方式*/
 /*
@@ -31,13 +32,13 @@ DBGPRINT(RT_DEBUG_TRACE,("ioctl SIOCSIWGENIE length=%d, pointer=%x\n", wrqin->u.
 #define KFPGA_DEBUG                     0   /*  */
 
 
-#define KI2C_DRIVER_ERROR               0            /*  */
-#define KTEMP_V_COLLECTION_ERROR        0            /*  */
-#define KFPGA_ERROR                     0   /*  */
+#define KI2C_DRIVER_ERROR               1            /*  */
+#define KTEMP_V_COLLECTION_ERROR        1            /*  */
+#define KFPGA_ERROR                     1   /*  */
 
 
 /*housir: 应用层调试开关 */
-#define UIBMC_DEBUG                     1            /*  */
+#define UIBMC_DEBUG                     0            /*  */
 
 
 

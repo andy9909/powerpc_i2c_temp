@@ -1,5 +1,5 @@
 # Comment/uncomment the following line to disable/enable debugging
-INCLUDE: = ../include
+INCLUDE := /home/work/i2c_housir/ThreadMain/include/
 DEBUG = y
 # Add your debugging flag (or not) to CFLAGS
 ifeq ($(DEBUG),y)
@@ -9,6 +9,7 @@ else
 endif
 
 EXTRA_CFLAGS += $(DEBFLAGS)
+EXTRA_CFLAGS += -I$(INCLUDE)
 #CFLAGS += -I..
 
 ifneq ($(KERNELRELEASE),)

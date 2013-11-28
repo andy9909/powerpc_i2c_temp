@@ -56,6 +56,7 @@ typedef struct FPGA_CONTROL_CMD_ST
 #define  FPGA_VOLT6_REG           0xB8 /*  */
 #define  FPGA_TOTAL_DISK_INFO_REG           0xD0 /*  */
 #define  FPGA_AVAILABLE_DISK_INFO_REG           0xD4 /*  */
+#define  FPGA_SYS_RUN_STATUS_REG           0xD8/*  */
 
 #define FPGA_REG_READ       0     /*  */
 #define FPGA_REG_WRITE       1     /*  */
@@ -196,12 +197,12 @@ static unsigned char vpx3Ssd1GetSlotInfo(void)
     //	fd = open("/dev/fpga_reg",O_RDWR,S_IRUSR | S_IWUSR);
     if (-1 == fpgaRegRead(FPGA_POSITION_REG, &uiRegValue))
     {
-        printf("fpgaRegRead\n");
+        PRT_IBMC_ERROR("fpgaRegRead error!\n");
     }
 
- //   printf("===> %s uiRegValue [0x%x]\n", __func__, uiRegValue);
+   PRT_IBMC_DEBUG("===> %s uiRegValue [0x%x]\n", __func__, uiRegValue);
 
- //   printf("===> %s:uiRegValue [0x%x] \n", __func__, uiRegValue);
+ //   PRT_IBMC_DEBUG("===> %s:uiRegValue [0x%x] \n", __func__, uiRegValue);
 #if 0
     if(ERROR_CHAR != fd)
     {
@@ -255,7 +256,7 @@ static int bmcAutoConfigEth(void)
     /*获取槽位ID和DEVICE_ID*/
     ucSlotInfoReg = vpx3Ssd1GetSlotInfo();
 
- //   printf("===> %s:ucSlotInfoReg [%d] \n", __func__, ucSlotInfoReg);
+    PRT_IBMC_DEBUG("===> %s:ucSlotInfoReg [%d] \n", __func__, ucSlotInfoReg);
     /*打桩验证*/
     //	ucSlotInfoReg = 0x74;
     ucDeviceId = (ucSlotInfoReg & 0x60)>> 0x5;
@@ -266,10 +267,10 @@ static int bmcAutoConfigEth(void)
     }
     else
     {
-        printf("ip num is more than 255\n");
+        PRT_IBMC_DEBUG("ip num is more than 255\n");
         return (-1);
     }
-    //printf("===> [%s] ucValue [0x%d]\n", __func__, ucValue);
+    PRT_IBMC_DEBUG("===> [%s] ucValue [0x%d]\n", __func__, ucValue);
     /*依据规则直接修改IP地址0x0 2bit(deviceId) 5bit(slotId)*/
     if(ucValue / 100)
     {
@@ -295,16 +296,16 @@ static int bmcAutoConfigEth(void)
     //int i = 0;
     //for(i = 0 ;i< 16; i++)
     {
-        //	printf("aucIpAddr[%d]=%c\n",i,aucIpAddr[i]);
+        //	PRT_IBMC_DEBUG("aucIpAddr[%d]=%c\n",i,aucIpAddr[i]);
     }
     /*发起命令设置*/
     pIpAddr = aucIpAddr;
-    //	printf("ip add = %s\n",pIpAddr);
+	PRT_IBMC_DEBUG("ip add = %s\n",pIpAddr);
     //ipAutoSet("em1","192.168.1.250","255.255.255.0","192.168.1.1");
     iRv = ipAutoSet("eth1",pIpAddr,pNetMaskDefault,pGateWayDefault);
     if(SET_SUCCESS != iRv)
     {
-        printf("auto set net ip addr fail,check card...\n");	
+        PRT_IBMC_ERROR("auto set net ip addr fail,check card...\n");	
     }
 }
 /**
@@ -329,7 +330,7 @@ static int fpgaRegRead(unsigned int addr, unsigned int * Value)
     {
         uiRegValue = -1;
         *Value = uiRegValue;
-        printf(" ioctl read error\n");
+        PRT_IBMC_ERROR(" ioctl read error\n");
         return -1;
     }
     *Value = uiRegValue;
@@ -356,12 +357,12 @@ static int fpgaRegWrite(unsigned int addr, unsigned int  Value)
     
     if (addr > 0x100)
     {
-        printf("error ===> %s addr [0x%x] is too large!\n", __func__, addr);
+        PRT_IBMC_ERROR("error ===> %s addr [0x%x] is too large!\n", __func__, addr);
     }
     //	fd = open("/dev/fpga_reg",O_RDWR,S_IRUSR | S_IWUSR);
     if(ioctl(gfd_fpga, *(int *)&stcmd, &uiRegValue) < 0)
     {
-        printf(" ioctl write error\n");
+        PRT_IBMC_ERROR(" ioctl write error\n");
         return -1;
     }
 
@@ -392,24 +393,24 @@ static int nfsDiskInfoUpdate(void)
     statfs("/mnt", &stDiskInfo);  
     ulBlockSize = stDiskInfo.f_bsize;    
     ullTotalSize = ulBlockSize * stDiskInfo.f_blocks;   
-//    printf("Total_size = %llu B = %llu KB = %llu MB\n",   
+//    PRT_IBMC_DEBUG("Total_size = %llu B = %llu KB = %llu MB\n",   
  //           ullTotalSize, ullTotalSize>>10, ullTotalSize>>20);  
 
     //ulFreeSize = stDiskInfo.f_bfree * ulBlockSize; //剩余空间的大小  
     ullAvailableSize = stDiskInfo.f_bavail * ulBlockSize;   //可用空间大小  
- //   printf("Disk_available = %llu MB \n",ullAvailableSize>>20); 
+//   PRT_IBMC_DEBUG("Disk_available = %llu MB \n",ullAvailableSize>>20); 
     ulTotalMSize = ullTotalSize>> 20;
     ulAvailableMsize = ullAvailableSize >> 20;
 
- //   printf("Total_size = %llu MB Disk_available = %llu MB \n",ulTotalMSize, ulAvailableMsize); 
+   PRT_IBMC_DEBUG("Total_size = %llu MB Disk_available = %llu MB \n",ulTotalMSize, ulAvailableMsize); 
     /*将信息刷新到FPAG中IOCTL控制寄存器读写*/
     if (-1 == fpgaRegWrite(FPGA_TOTAL_DISK_INFO_REG, ulTotalMSize))
     {
-        printf("fpgaRegWrite FPGA_TOTAL_DISK_INFO_REG error!\n");
+        PRT_IBMC_ERROR("fpgaRegWrite FPGA_TOTAL_DISK_INFO_REG error!\n");
     }
     if (-1 == fpgaRegWrite(FPGA_AVAILABLE_DISK_INFO_REG, ulAvailableMsize))
     {
-        printf("fpgaRegWrite FPGA_AVAILABLE_DISK_INFO_REG error!\n");
+        PRT_IBMC_ERROR("fpgaRegWrite FPGA_AVAILABLE_DISK_INFO_REG error!\n");
     }
 
 
@@ -433,7 +434,7 @@ static int TempVInfoUpdata(void)
     dev_fd = open("/dev/read_sensor",O_RDWR,S_IRUSR | S_IWUSR);
     if ( dev_fd == -1 ) 
     {
-        printf("Cann't open file /dev/read_sensor\n");
+        PRT_IBMC_ERROR("Cann't open file /dev/read_sensor\n");
         exit(1);
     }
 
@@ -447,13 +448,13 @@ static int TempVInfoUpdata(void)
         {
             vtemp_v &= 0x8000;/*housir: 按照存储规范 最高位为符号位 */
         }
- //      printf("read v%d v%d tem is %d.%0.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
+        PRT_IBMC_DEBUG("read v%d v%d tem is %d.%0.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
         if (-1 == fpgaRegWrite(FPGA_TEMP0_REG + index*sizeof(unsigned int), vtemp_v))
         {
-            printf("fpgaRegWrite FPGA_TEMP0_REG error!\n");
+            PRT_IBMC_ERROR("fpgaRegWrite FPGA_TEMP0_REG error!\n");
         }       
  //       fpgaRegRead(FPGA_TEMP0_REG + index*sizeof(unsigned int), &tmp);
- //       printf("read  from fpga 0x%x\n", tmp);
+ //       PRT_IBMC_DEBUG("read  from fpga 0x%x\n", tmp);
    //     tmp = 0;
 
 
@@ -463,21 +464,21 @@ static int TempVInfoUpdata(void)
     {
         vtemp_v = 0;
         vtemp_v =  stasensor_value[index + SENSOR_TEMP_TOTAL].hvtemp<<8 |  stasensor_value[index + SENSOR_TEMP_TOTAL].lvtemp;
-	//printf("stasensor_value[index].hvtemp [%d], ltemp [%d]\n",stasensor_value[index].hvtemp, stasensor_value[index].lvtemp );
+        PRT_IBMC_DEBUG("stasensor_value[index].hvtemp [%d], ltemp [%d]\n",stasensor_value[index].hvtemp, stasensor_value[index].lvtemp );
 
         if (NEGATIVE == stasensor_value[index].sign )
         {
             vtemp_v &= 0x8000;/*housir: 按照存储规范 最高位为符号位 */
         }
-       //printf("read v%d V is %d.%0.2d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
+        PRT_IBMC_DEBUG("read v%d V is %d.%0.2d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
 
         if (-1 == fpgaRegWrite(FPGA_VOLT0_REG + index*sizeof(unsigned int), vtemp_v))
         {
-            printf("fpgaRegWrite FPGA_TEMP0_REG error!\n");
+            PRT_IBMC_ERROR("fpgaRegWrite FPGA_TEMP0_REG error!\n");
         }      
-	//printf("vtemp_v [0x%x]\n", vtemp_v);
+	//PRT_IBMC_DEBUG("vtemp_v [0x%x]\n", vtemp_v);
         //fpgaRegRead(FPGA_VOLT0_REG + index*sizeof(unsigned int), &tmp);
-        //printf("read  from fpga 0x%x\n", tmp);
+        //PRT_IBMC_DEBUG("read  from fpga 0x%x\n", tmp);
         //tmp = 0;
     }
 
@@ -497,9 +498,9 @@ int check_nfs_status()
 
     run_status = 1;
 
-    if (-1 == fpgaRegWrite(FPGA_RUN_STATUS_REG , run_status))
+    if (-1 == fpgaRegWrite(FPGA_SYS_RUN_STATUS_REG , run_status))
     {
-        printf("fpgaRegWrite FPGA_TEMP0_REG error!\n");
+        PRT_IBMC_ERROR("fpgaRegWrite FPGA_TEMP0_REG error!\n");
     }        
 
     return (0);
@@ -525,7 +526,7 @@ void main()
 
     if(-1 == gfd_fpga)
     {
-        printf("open failed !\n");
+        PRT_IBMC_ERROR("open failed !\n");
         return ;
     }
     check_nfs_status();
@@ -533,7 +534,7 @@ void main()
     iRv = bmcAutoConfigEth();
     if(SET_SUCCESS != iRv)
     {
-        printf("bmc config eth \n");	
+        PRT_IBMC_ERROR("bmc config eth \n");	
     }
 
     while(1)
