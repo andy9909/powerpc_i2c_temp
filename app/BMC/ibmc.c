@@ -30,6 +30,8 @@
 #include <sys/statfs.h>
 #include <sys/ioctl.h>
 
+#include"vpx3_prt_include.h"
+
 /*housir: 结构体定义 */
 /*FPGA控制命令结构体*/
 typedef struct FPGA_CONTROL_CMD_ST
@@ -242,8 +244,8 @@ static int bmcAutoConfigEth(void)
     char *pIpAddr="192.168.1.251";
     char aucIpAddr[LENGTH_IPV4 + 1];
     char ucSlotInfoReg = 0;
-    char ucSlotId = 0;
-    char ucDeviceId = 0;
+    unsigned char ucSlotId = 0;
+    unsigned char ucDeviceId = 0;
     unsigned char ucValue = 0;
     int iRv = 0x1;
 
@@ -258,7 +260,15 @@ static int bmcAutoConfigEth(void)
     //	ucSlotInfoReg = 0x74;
     ucDeviceId = (ucSlotInfoReg & 0x60)>> 0x5;
     ucSlotId = ucSlotInfoReg & 0x1f;
-    ucValue = ((ucDeviceId << 0x5) + ucSlotId);
+    if (((ucDeviceId << 0x5) + ucSlotId) <= 255)
+    {
+        ucValue = ((ucDeviceId << 0x5) + ucSlotId);
+    }
+    else
+    {
+        printf("ip num is more than 255\n");
+        return (-1);
+    }
     //printf("===> [%s] ucValue [0x%d]\n", __func__, ucValue);
     /*依据规则直接修改IP地址0x0 2bit(deviceId) 5bit(slotId)*/
     if(ucValue / 100)
@@ -476,6 +486,25 @@ static int TempVInfoUpdata(void)
     return 0;
 
 }
+/**
+ * @brief 检查nfs状态 若nfs正常启动则向fpga中指定位置写1 否则写0
+ *
+ * @return 
+ */
+int check_nfs_status()
+{
+    unsigned char run_status = 0;
+
+    run_status = 1;
+
+    if (-1 == fpgaRegWrite(FPGA_RUN_STATUS_REG , run_status))
+    {
+        printf("fpgaRegWrite FPGA_TEMP0_REG error!\n");
+    }        
+
+    return (0);
+}
+
 /*****************************************************************************
 func : main
 description : 实现VPX3-SSD1单板的BMC功能
@@ -499,7 +528,7 @@ void main()
         printf("open failed !\n");
         return ;
     }
-
+    check_nfs_status();
     /*自动设置网卡IP地址上电配置一次即可*/
     iRv = bmcAutoConfigEth();
     if(SET_SUCCESS != iRv)

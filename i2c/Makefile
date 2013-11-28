@@ -1,6 +1,7 @@
 # Comment/uncomment the following line to disable/enable debugging
 DEBUG = y
 PLATFORM = PowerPC
+INCLUDE: = ../include
 #LCT2991_DIR = ./LTC2991
 #>>>>>>>>>>>>>>>>>>>>>>>
 ifeq ($(PLATFORM),PowerPC)   
@@ -36,7 +37,7 @@ KERNELDIR ?= /home/work/i2c_housir/linux-3.6.11/
 PWD       := $(shell pwd)
 
 default:
-	$(MAKE)  -C $(KERNELDIR) M=$(PWD) modules ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE)
+	$(MAKE)  -C $(KERNELDIR) M=$(PWD) INCDIR=$(INCLUDE) modules ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE)
 endif
 
 

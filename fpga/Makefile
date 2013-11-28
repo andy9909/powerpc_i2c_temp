@@ -1,4 +1,5 @@
 # Comment/uncomment the following line to disable/enable debugging
+INCLUDE: = ../include
 DEBUG = y
 # Add your debugging flag (or not) to CFLAGS
 ifeq ($(DEBUG),y)
@@ -21,7 +22,7 @@ KERNELDIR ?= /home/work/NFS/vpx3-ssd1/linux-3.6.11/
 PWD       := $(shell pwd)
 
 default:
-	$(MAKE)  -C $(KERNELDIR) M=$(PWD) modules ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu-
+	$(MAKE)  -C $(KERNELDIR) M=$(PWD) INCDIR=$(INCLUDE) modules ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu-
 
 endif
 
