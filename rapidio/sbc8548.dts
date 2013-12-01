@@ -63,20 +63,34 @@
 		ranges = <0x0 0x0 0xf8000000 0x08000000>;	/*64MB Flash*/
 
 
-		flash@0,0 {
+		flash@0xf8000000{
 			#address-cells = <1>;
 			#size-cells = <1>;
-			compatible = "cfi-flash";
-			reg = <0x0 0x0 0x08000000>;
-			bank-width = <1>;
-			device-width = <1>;
+                        #compatible = "amd,am29lv128ml", "cfi-flash";
+                        compatible = "spansion,s29gl01gp","cfi-flash";
+		       reg = <0x0 0x0 0x08000000>;
+		       #reg = <0xf8000000 0x08000000>;
+			bank-width = <2>;
+			device-width = <2>;
 			partition@0x0 {
-				label = "space";
-				reg = <0x00000000 0x07800000>;
+				label = "fs";
+				reg = <0x0000000 0x05000000>;
 			};
-			partition@0x100000 {
+			partition@0x5000000{
+				label = "rootfs";
+				reg = <0x5000000 0x2000000>;
+			};
+			partition@0x7000000{
+				label = "dtb";
+				reg = <0x7a00000 0x20000>;
+			};
+			partition@7b00000{
+				label = "uImage";
+				reg = <0x7b00000 0x400000>;
+			};
+			partition@0x7f00000 {
 				label = "bootloader";
-				reg = <0x00100000 0x00800000>;
+				reg = <0x7f00000 0x100000>;
 				read-only;
 			};
 		};
@@ -118,6 +132,32 @@
 			cache-size = <0x80000>;	// L2, 512K
 			interrupt-parent = <&mpic>;
 			interrupts = <0x10 0x2>;
+		};
+
+		i2c@3000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cell-index = <0>;
+			compatible = "fsl-i2c";
+			reg = <0x3000 0x100>;
+			interrupts = <0x2b 0x2>;
+			interrupt-parent = <&mpic>;
+			dfsrr;
+                  sensor_v@4d {
+                                compatible = "sensor_v,lct2991";
+                                reg = <0x4d>;
+                        };  
+		};
+
+		i2c@3100 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cell-index = <1>;
+			compatible = "fsl-i2c";
+			reg = <0x3100 0x100>;
+			interrupts = <0x2b 0x2>;
+			interrupt-parent = <&mpic>;
+			dfsrr;
 		};
 
 		dma@21300 {

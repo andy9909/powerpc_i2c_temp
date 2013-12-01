@@ -249,7 +249,10 @@ static void *test_m;
 extern int __devinit rio_init_mports(void);
 void disc_rio(void)
 {
-	rio_init_mports();
+	return;
+/* BEGIN: Added by niefei, 2013/11/29   Œ Ã‚µ•∫≈:niefei delect */
+//	rio_init_mports();
+/* END:   Added by niefei, 2013/11/29 */
 }
 inline unsigned char str2hexnum(unsigned char c)
 {

@@ -194,6 +194,11 @@ struct rio_dbell_msg {
 	u16 info;
 };
 
+
+extern void test_doorbell(unsigned char *);
+extern void testOutBoundSendMsg(unsigned char * str);
+
+
 /**
  * fsl_rio_tx_handler - MPC85xx outbound message interrupt handler
  * @irq: Linux interrupt number
@@ -239,7 +244,51 @@ fsl_rio_tx_handler(int irq, void *dev_instance)
 out:
 	return IRQ_HANDLED;
 }
+#if 0
+static irqreturn_t
+fsl_rio_rx_handler(int irq, void *dev_instance)
+{
+	int isr;
+	int uiRecvAddr;
+	u32 uiDlyTime = 0;
+	u32 uiQueue,uiDeQueue,uiVal;
+	struct rio_mport *port = (struct rio_mport *)dev_instance;
+	struct fsl_rmu *rmu = GET_RMM_HANDLE(port);
 
+	uiRecvAddr = in_be32(&rmu->msg_regs->ifqdpar);
+	isr = in_be32(&rmu->msg_regs->isr);
+	out_be32(&rmu->msg_regs->isr, isr);
+	uiQueue = in_be32(&rmu->msg_regs->ifqdpar);
+	uiDeQueue = in_be32(&rmu->msg_regs->ifqepar);
+	
+	while(uiQueue != uiDeQueue)
+	{
+        uiVal = in_be32(&rmu->msg_regs->isr);
+        if((uiVal >> 2) & 0x01)
+        {
+               printk("msg unit busy....");
+            break;
+        }
+        uiVal = in_be32(&rmu->msg_regs->imr);
+        uiVal |= 2;
+        out_be32(&rmu->msg_regs->imr,uiVal);
+        uiVal = in_be32(&rmu->msg_regs->imr);
+        while((uiVal & 2) != 0)
+        {
+            if(0x10000 == uiDlyTime)
+            {
+                break;
+            }
+            uiDlyTime ++;
+        }
+		uiQueue = in_be32(&rmu->msg_regs->ifqdpar);
+		uiDeQueue = in_be32(&rmu->msg_regs->ifqepar);
+
+    }
+	return IRQ_HANDLED;
+}
+
+#else
 /**
  * fsl_rio_rx_handler - MPC85xx inbound message interrupt handler
  * @irq: Linux interrupt number
@@ -262,6 +311,9 @@ fsl_rio_rx_handler(int irq, void *dev_instance)
 		out_be32((void *)&rmu->msg_regs->isr, RIO_MSG_ISR_TE);
 		goto out;
 	}
+	printk("disable interruput\n");
+	out_be32((void *)&rmu->msg_regs->imr, in_be32(&rmu->msg_regs->isr) & 0xffffffbf);
+	/*end by niefei*/
 	/* XXX Need to check/dispatch until queue empty */
 	if (isr & RIO_MSG_ISR_DIQI) {
 		/*
@@ -275,13 +327,37 @@ fsl_rio_rx_handler(int irq, void *dev_instance)
 				-1);
 
 		/* Ack the queueing interrupt */
+		printk("rx_handle isr = 0x%x\n",isr);
 		out_be32(&rmu->msg_regs->isr, RIO_MSG_ISR_DIQI);
+		isr = in_be32(&rmu->msg_regs->isr);
+		while(in_be32(&rmu->msg_regs->isr) & RIO_MSG_ISR_DIQI)
+		{
+			out_be32(&rmu->msg_regs->isr, RIO_MSG_ISR_DIQI);
+			printk("clear isr  fail = 0x%x\n",isr);
+		}
+		printk("clear isr  = 0x%x\n",isr);
 	}
+#if 0	
+	/*
+	 * Configure inbound message unit:
+	 *      Snooping
+	 *      4KB max message size
+	 *      Unmask all interrupt sources
+	 *      Disable
+	 */
+	out_be32(&rmu->msg_regs->imr, 0x001b0060);
 
+	/* Set number of queue entries */
+	setbits32(&rmu->msg_regs->imr, (get_bitmask_order(8) - 2) << 12);
+
+	/* Now enable the unit */
+	setbits32(&rmu->msg_regs->imr, 0x1);
+//end by niefei
+#endif
 out:
 	return IRQ_HANDLED;
 }
-
+#endif
 /**
  * fsl_rio_dbell_handler - MPC85xx doorbell interrupt handler
  * @irq: Linux interrupt number
@@ -296,8 +372,14 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 	int dsr;
 	struct fsl_rio_dbell *fsl_dbell = (struct fsl_rio_dbell *)dev_instance;
 	int i;
+	unsigned char  bin_content_ascii[30] = {"0x12 0x1212"};
 
 	dsr = in_be32(&fsl_dbell->dbell_regs->dsr);
+
+	pr_info("niefei RIO: doorbell reception ok\n");
+
+	//add by housir
+	test_doorbell(&bin_content_ascii[0]);
 
 	if (dsr & DOORBELL_DSR_TE) {
 		pr_info("RIO: doorbell reception error\n");
@@ -939,17 +1021,28 @@ int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox)
 	static u32 uiOpenFlag = 0;
 	struct fsl_rmu *rmu = GET_RMM_HANDLE(mport);
 	unsigned char *pValue;
+
+	unsigned char bin_content_ascii[40] = {"0x12 0 0x18000000 0x10"};
+		
 	uMbox = v_uMbox;
 	usDestId = v_usDestId;
-	//uiOpenId = (u32)usDestId;
-	uiOpenId = 0x12;
+	uiOpenId = (u32)usDestId;
+	buf = (void *)kmalloc(0x1000,GFP_KERNEL);
+	if(NULL == buf)
+	{
+		printk("error get msg kalloc  return\n");
+		return -1;
+	}
+	fsl_add_inb_buffer(mport,0,buf);
+	//uiOpenId = 0x12;
 	if(uiOpenFlag == 0)
 	{
-		fsl_open_inb_mbox(mport,(void *)&uiOpenId,0,1024);
+		fsl_open_inb_mbox(mport,(void *)&uiOpenId,0,8);
 		printk("inbound get msg init\n");
 		uiOpenFlag = 1;
 		return 0;
 	}
+	testOutBoundSendMsg(&bin_content_ascii[0]);
 	phys_buf = in_be32(&rmu->msg_regs->ifqdpar);
 
 	/* If no more messages, then bail out */
@@ -977,7 +1070,10 @@ int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox)
 	out1:
 	printk("out111111\n");
 	setbits32(&rmu->msg_regs->imr, RIO_MSG_IMR_MI);
-
+	/*add by niefei*/
+	fsl_close_inb_mbox(mport,0);
+	uiOpenFlag=0;
+	/*end */
 	out2:
 	printk("out22222\n");
 	//return buf;
@@ -1179,7 +1275,71 @@ void fsl_close_outb_mbox(struct rio_mport *mport, int mbox)
 	/* Free interrupt */
 	free_irq(IRQ_RIO_TX(mport), (void *)mport);
 }
+#if 0
+/*****************************************************************************
+ func : fsl_open_inb_mbox
+ description : RapidIO接收message 初始化
+ input : 
+ output :
+ return :
+ 作者:聂飞
+ 时间:2013-11-26
+*****************************************************************************/
 
+int
+fsl_open_inb_mbox(struct rio_mport *mport, void *dev_id, int mbox, int entries)
+
+{
+	int rc = 0;
+	int uiVal = 0;
+	void *pAddr;
+	//struct rio_priv *priv = mport->priv;
+	struct fsl_rmu *rmu = GET_RMM_HANDLE(mport);
+
+	if ((entries < RIO_MIN_RX_RING_SIZE) ||
+		(entries > RIO_MAX_RX_RING_SIZE) || (!is_power_of_2(entries))) {
+		rc = -EINVAL;
+		goto out;
+	}
+	pAddr = (void *)kmalloc(0x1000,GFP_KERNEL);
+// DISABLE INTERUPUT
+	uiVal = in_be32(&rmu->msg_regs->imr);
+	uiVal &= (~(1<<0));
+	out_be32(&rmu->msg_regs->imr, uiVal);
+	/* Clear interrupt status */
+	out_be32(&rmu->msg_regs->isr, 0x00000491);
+	
+	uiVal = in_be32(&rmu->msg_regs->imr);
+	uiVal &= 0x0;
+	out_be32(&rmu->msg_regs->imr, uiVal);
+
+	uiVal = in_be32(&rmu->msg_regs->imr);
+	uiVal |= ((1<<20) | (1 << 6) | (1 << 8) | (0xa << 12)|
+		      (0xb << 16)|(0x1 << 28));
+	out_be32(&rmu->msg_regs->imr, uiVal);
+	
+
+	out_be32(&rmu->msg_regs->ifqdpar, (u32)pAddr);
+	out_be32(&rmu->msg_regs->ifqepar,(u32)pAddr);
+
+	uiVal = in_be32(&rmu->msg_regs->imr);
+	uiVal |= 0x01;
+	out_be32(&rmu->msg_regs->imr, uiVal);
+
+	/* Hook up inbound message handler */
+	rc = request_irq(IRQ_RIO_RX(mport), fsl_rio_rx_handler, 0,
+			 "msg_rx", (void *)mport);
+	if (rc < 0) {
+		goto out;
+	}
+
+
+
+out:
+	return rc;
+}
+
+#else
 /**
  * fsl_open_inb_mbox - Initialize MPC85xx inbound mailbox
  * @mport: Master port implementing the inbound message unit
@@ -1255,7 +1415,7 @@ fsl_open_inb_mbox(struct rio_mport *mport, void *dev_id, int mbox, int entries)
 out:
 	return rc;
 }
-
+#endif
 /**
  * fsl_close_inb_mbox - Shut down MPC85xx inbound mailbox
  * @mport: Master port implementing the inbound message unit
