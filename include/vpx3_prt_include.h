@@ -38,7 +38,7 @@ DBGPRINT(RT_DEBUG_TRACE,("ioctl SIOCSIWGENIE length=%d, pointer=%x\n", wrqin->u.
 
 
 /*housir: 应用层调试开关 */
-#define UIBMC_DEBUG                     0            /*  */
+#define UIBMC_DEBUG                     1            /*  */
 
 
 

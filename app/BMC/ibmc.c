@@ -448,7 +448,7 @@ static int TempVInfoUpdata(void)
         {
             vtemp_v &= 0x8000;/*housir: 按照存储规范 最高位为符号位 */
         }
-        PRT_IBMC_DEBUG("read v%d v%d tem is %d.%0.2d\n", 2*index+1, 2*index+2, stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
+        PRT_IBMC_DEBUG("read v%d v%d tem is %c %d.%0.2d\n", 2*index+1, 2*index+2, stasensor_value[index].sign == NEGATIVE  ? '-' : '+', stasensor_value[index].hvtemp , stasensor_value[index].lvtemp );
         if (-1 == fpgaRegWrite(FPGA_TEMP0_REG + index*sizeof(unsigned int), vtemp_v))
         {
             PRT_IBMC_ERROR("fpgaRegWrite FPGA_TEMP0_REG error!\n");
@@ -464,13 +464,13 @@ static int TempVInfoUpdata(void)
     {
         vtemp_v = 0;
         vtemp_v =  stasensor_value[index + SENSOR_TEMP_TOTAL].hvtemp<<8 |  stasensor_value[index + SENSOR_TEMP_TOTAL].lvtemp;
-        PRT_IBMC_DEBUG("stasensor_value[index].hvtemp [%d], ltemp [%d]\n",stasensor_value[index].hvtemp, stasensor_value[index].lvtemp );
+      //  PRT_IBMC_DEBUG("stasensor_value[index].hvtemp [%d], ltemp [%d]\n",stasensor_value[index+ SENSOR_TEMP_TOTAL].hvtemp, stasensor_value[index+ SENSOR_TEMP_TOTAL].lvtemp );
 
         if (NEGATIVE == stasensor_value[index].sign )
         {
             vtemp_v &= 0x8000;/*housir: 按照存储规范 最高位为符号位 */
         }
-        PRT_IBMC_DEBUG("read v%d V is %d.%0.2d\n", index+1, stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
+        PRT_IBMC_DEBUG("read v%d V is %c %d.%0.2d\n", index+1, stasensor_value[index + SENSOR_TEMP_TOTAL].sign == NEGATIVE  ? '-' : '+',stasensor_value[ index + SENSOR_TEMP_TOTAL ].hvtemp ,  stasensor_value[ index + SENSOR_TEMP_TOTAL ].lvtemp );
 
         if (-1 == fpgaRegWrite(FPGA_VOLT0_REG + index*sizeof(unsigned int), vtemp_v))
         {
