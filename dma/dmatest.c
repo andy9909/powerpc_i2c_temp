@@ -19,7 +19,7 @@
 #include <linux/slab.h>
 #include <linux/wait.h>
 
-static unsigned int test_buf_size = 16384;
+static unsigned int test_buf_size = 16384;//16K
 module_param(test_buf_size, uint, S_IRUGO);
 MODULE_PARM_DESC(test_buf_size, "Size of the memcpy test buffer");
 
@@ -127,7 +127,7 @@ static void dmatest_init_srcs(u8 **bufs, unsigned int start, unsigned int len)
 	unsigned int i;
 	u8 *buf;
 	
-	printk("[module dmatest] ===> [%s]\n", __func__);
+	//printk("[module dmatest] ===> [%s]\n", __func__);
 
 	for (; (buf = *bufs); bufs++) {
 		for (i = 0; i < start; i++)
@@ -140,7 +140,7 @@ static void dmatest_init_srcs(u8 **bufs, unsigned int start, unsigned int len)
 		buf++;
 	}
 	
-	printk("[module dmatest] <=== [%s]\n", __func__);
+	//printk("[module dmatest] <=== [%s]\n", __func__);
 
 }
 
@@ -149,7 +149,7 @@ static void dmatest_init_dsts(u8 **bufs, unsigned int start, unsigned int len)
 	unsigned int i;
 	u8 *buf;
 
-	printk("[module dmatest] ===> [%s]\n", __func__);
+	//printk("[module dmatest] ===> [%s]\n", __func__);
 
 	for (; (buf = *bufs); bufs++) {
 		for (i = 0; i < start; i++)
@@ -161,7 +161,7 @@ static void dmatest_init_dsts(u8 **bufs, unsigned int start, unsigned int len)
 			buf[i] = PATTERN_DST | (~i & PATTERN_COUNT_MASK);
 	}
 	
-	printk("[module dmatest] <=== [%s]\n", __func__);
+	//printk("[module dmatest] <=== [%s]\n", __func__);
 
 }
 
@@ -322,10 +322,13 @@ static int dmatest_func(void *data)
 	 */
 	flags = DMA_CTRL_ACK | DMA_PREP_INTERRUPT
 	      | DMA_COMPL_SKIP_DEST_UNMAP | DMA_COMPL_SRC_UNMAP_SINGLE;
-
+#if 0/*housir:  */
 	while (!kthread_should_stop()
 	       && !(iterations && total_tests >= iterations)) {
-		struct dma_device *dev = chan->device;
+#else
+        do{
+#endif
+        struct dma_device *dev = chan->device;
 		struct dma_async_tx_descriptor *tx = NULL;
 		dma_addr_t dma_srcs[src_cnt];
 		dma_addr_t dma_dsts[dst_cnt];
@@ -347,18 +350,20 @@ static int dmatest_func(void *data)
 			break;
 		}
 
-		len = dmatest_random() % test_buf_size + 1;
+		len = 100;//dmatest_random() % test_buf_size + 1;
 		len = (len >> align) << align;
 		if (!len)
 			len = 1 << align;
-		src_off = dmatest_random() % (test_buf_size - len + 1);
-		dst_off = dmatest_random() % (test_buf_size - len + 1);
+		src_off = 0;//dmatest_random() % (test_buf_size - len + 1);
+		dst_off = 0;//dmatest_random() % (test_buf_size - len + 1);
 
 		src_off = (src_off >> align) << align;
 		dst_off = (dst_off >> align) << align;
 
-		dmatest_init_srcs(thread->srcs, src_off, len);
-		dmatest_init_dsts(thread->dsts, dst_off, len);
+		memset(thread->srcs[0],0x1,200);
+		memset(thread->dsts[0],0x3,200);	
+	//	dmatest_init_srcs(thread->srcs, src_off, len);
+	//	dmatest_init_dsts(thread->dsts, dst_off, len);
 
 		for (i = 0; i < src_cnt; i++) {
 			u8 *buf = thread->srcs[i] + src_off;
@@ -372,7 +377,29 @@ static int dmatest_func(void *data)
 						     test_buf_size,
 						     DMA_BIDIRECTIONAL);
 		}
+        
+        printk("thread->type [%d] dst_off [%d] src_off [%d] len [%d] \n", thread->type, dst_off, src_off, len);
 
+        printk("\ndisplay dma_src addr [0x%x] src_cnt : [%d] content :\n", &thread->srcs[0][0], src_cnt);
+        volatile char *temp = &(thread->srcs[0][0]);
+        for(i=0;i<200;i++)
+        {
+            printk("0x%x,", temp[i]);
+			if(i%10 == 0)
+				printk("\n");		
+        }
+        printk("\n dma_srcs display over\n");
+
+        printk("\ndisplay dma_dst addr [0x%x] dst_cnt : [%d] content :\n", &thread->dsts[0][0], dst_cnt);
+        temp = &(thread->dsts[0][0]);
+        for(i=0;i<200;i++)
+        {
+            printk("0x%x,", temp[i]);
+			if(i%10 == 0)
+				printk("\n");
+
+        }
+        printk("\n dma_dsts display over\n");
 
 		if (thread->type == DMA_MEMCPY)
 			tx = dev->device_prep_dma_memcpy(chan,
@@ -454,6 +481,29 @@ static int dmatest_func(void *data)
 			continue;
 		}
 
+		printk("thread->type [%d] dst_off [%d] src_off [%d] len [%d] \n", thread->type, dst_off, src_off, len);
+
+        printk("\ndisplay dma_src addr dma write? [0x%x] src_cnt : [%d] content :\n", &thread->srcs[0][0], src_cnt);
+        temp = &(thread->srcs[0][0]);
+        for(i=0;i<200;i++)
+        {
+            printk("0x%x,", temp[i]);
+			if(i%10 == 0)
+				printk("\n");
+        }
+        printk("\n dma_srcs display over\n");
+
+        printk("\ndisplay dma_dst addr dma write? [0x%x] dst_cnt : [%d] content :\n", &thread->dsts[0][0], dst_cnt);
+        temp = &(thread->dsts[0][0]);
+        for(i=0;i<200;i++)
+        {
+            printk("0x%x,", temp[i]);
+			if(i%10 == 0)
+				printk("\n");
+
+        }
+        printk("\n dma_dsts display over\n");
+
 		/* Unmap by myself (see DMA_COMPL_SKIP_DEST_UNMAP above) */
 		for (i = 0; i < dst_cnt; i++)
 			dma_unmap_single(dev->dev, dma_dsts[i], test_buf_size,
@@ -494,8 +544,11 @@ static int dmatest_func(void *data)
 				thread_name, total_tests - 1,
 				src_off, dst_off, len);
 		}
+#if 0 
 	}
-
+#else
+    }while(0);
+#endif/*housir: 让循环只进行一次 测试用*/
 	ret = 0;
 	for (i = 0; thread->dsts[i]; i++)
 		kfree(thread->dsts[i]);
@@ -577,7 +630,7 @@ static int dmatest_add_threads(struct dmatest_chan *dtc, enum dma_transaction_ty
 		thread->type = type;
 		smp_wmb();
 		thread->task = kthread_run(dmatest_func, thread, "%s-%s%u",
-				dma_chan_name(chan), op, i);
+				dma_chan_name(chan), op, i);  //创建新线程，运行dmatest_func 程序。  
 		if (IS_ERR(thread->task)) {
 			pr_warning("dmatest: Failed to run thread %s-%s%u\n",
 					dma_chan_name(chan), op, i);
@@ -656,22 +709,29 @@ static int __init dmatest_init(void)
 
 	printk("[module dmatest] ===> [%s]\n", __func__);
 
-	dma_cap_zero(mask);
-	dma_cap_set(DMA_MEMCPY, mask);
-	for (;;) {
-		chan = dma_request_channel(mask, filter, NULL);
+	dma_cap_zero(mask);//清除mask  
+	dma_cap_set(DMA_MEMCPY, mask);//设置 DMA_MEMCPY 掩码  
+#if 0
+    //	for (;;) {
+#else
+    do{
+#endif
+		chan = dma_request_channel(mask, filter, NULL);//请求获得 dma channel  
 		if (chan) {
-			err = dmatest_add_channel(chan);
+			err = dmatest_add_channel(chan);//添加 dma test channel  
 			if (err) {
-				dma_release_channel(chan);
+				dma_release_channel(chan); //释放 dma channel  
 				break; /* add_channel failed, punt */
 			}
 		} else
 			break; /* no more channels available */
-		if (max_channels && nr_channels >= max_channels)
+		if (max_channels && nr_channels >= max_channels) //限定最大 channel数  
 			break; /* we have all we need */
-	}
-
+#if 0
+     //	}
+#else
+}while(0);
+#endif
 	printk("[module dmatest] <=== [%s]\n", __func__);
 
 
