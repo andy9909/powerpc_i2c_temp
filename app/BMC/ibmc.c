@@ -270,28 +270,28 @@ static int bmcAutoConfigEth(void)
         PRT_IBMC_DEBUG("ip num is more than 255\n");
         return (-1);
     }
-    PRT_IBMC_DEBUG("===> [%s] ucValue [0x%d]\n", __func__, ucValue);
+    PRT_IBMC_DEBUG("===> [%s] ucValue [0x%x]\n", __func__, ucValue);
     /*依据规则直接修改IP地址0x0 2bit(deviceId) 5bit(slotId)*/
     if(ucValue / 100)
     {
-        aucIpAddr[IP_ADDR_4_OFFSET] = ucValue / 100 + 48;
+        aucIpAddr[IP_ADDR_4_OFFSET] = ucValue / 100 + '0';
         ucValue = ucValue %100;
-        aucIpAddr[IP_ADDR_4_OFFSET +1] = ucValue/10 + 48;
+        aucIpAddr[IP_ADDR_4_OFFSET +1] = ucValue/10 + '0';
         ucValue = ucValue %10;
-        aucIpAddr[IP_ADDR_4_OFFSET +2] = ucValue + 48;
-        aucIpAddr[IP_ADDR_4_OFFSET +3] = '0';
+        aucIpAddr[IP_ADDR_4_OFFSET +2] = ucValue + '0';
+        aucIpAddr[IP_ADDR_4_OFFSET +3] = '\0';
     }
     else if(ucValue / 10)
     {
-        aucIpAddr[IP_ADDR_4_OFFSET ] = (ucValue/10) + 48;
+        aucIpAddr[IP_ADDR_4_OFFSET ] = (ucValue/10) + '0';
         ucValue = ucValue %10;
-        aucIpAddr[IP_ADDR_4_OFFSET +1] = ucValue+48;
+        aucIpAddr[IP_ADDR_4_OFFSET +1] = ucValue+'0';
         aucIpAddr[IP_ADDR_4_OFFSET +2] = '\0';
     }
     else
     {
-        aucIpAddr[IP_ADDR_4_OFFSET] = ucValue + 48;
-        aucIpAddr[IP_ADDR_4_OFFSET +1] = '0';
+        aucIpAddr[IP_ADDR_4_OFFSET] = ucValue + '0';
+        aucIpAddr[IP_ADDR_4_OFFSET +1] = '\0';
     }
     //int i = 0;
     //for(i = 0 ;i< 16; i++)

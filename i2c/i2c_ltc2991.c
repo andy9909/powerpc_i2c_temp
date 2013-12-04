@@ -250,7 +250,7 @@ int8_t i2c_write_byte_data(uint8_t address, uint8_t command, uint8_t value)
     
     if(ret < 0 )
     {
-        PRT_KI2C_DRIVER_ERROR((" %s:%s->%d\n", __func__, __FILE__, __LINE__));
+        PRT_KI2C_DRIVER_ERROR((" %s:%s->%d i2c_transfer return failed\n", __func__, __FILE__, __LINE__));
         return -1;
     }
     else
@@ -304,7 +304,7 @@ int8_t i2c_write_word_data(uint8_t address, uint8_t command, uint16_t value)
     ret = i2c_transfer(new_client->adapter, msgs, 1);    
     if(ret < 0 )
     {
-        PRT_KI2C_DRIVER_ERROR(("%s:%s->%d\n", __func__, __FILE__, __LINE__));
+        PRT_KI2C_DRIVER_ERROR(("%s:%s->%d i2c_transfer return failed\n", __func__, __FILE__, __LINE__));
         return -1;
     }
     else
@@ -370,7 +370,7 @@ int8_t i2c_read_byte_data(uint8_t address, uint8_t command, uint8_t *value)
 
     if(ret < 0 )
     {
-        PRT_KI2C_DRIVER_ERROR(("%s:%s->%d\n", __func__, __FILE__, __LINE__));
+        PRT_KI2C_DRIVER_ERROR(("%s:%s->%d i2c_transfer return failed\n", __func__, __FILE__, __LINE__));
         return -1;
     }
     else
@@ -446,7 +446,7 @@ int8_t i2c_read_word_data(uint8_t address, uint8_t command, uint16_t *value)
 
     if(ret < 0 )
     {
-        PRT_KI2C_DRIVER_ERROR(("%s:%s->%d\n", __func__, __FILE__, __LINE__));
+        PRT_KI2C_DRIVER_ERROR(("%s:%s->%d i2c_transfer return failed\n", __func__, __FILE__, __LINE__));
         return -1;
     }
     else

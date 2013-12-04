@@ -145,7 +145,7 @@ do{                                   \
 
 /*housir: 调试回显 */
 #if UIBMC_DEBUG
-#define PRT_IBMC_DEBUG     { printf ("[app module  ibmc] "); __USER_TRACE_PRINT  ;}
+#define PRT_IBMC_DEBUG     { printf ("[app module ibmc] "); __USER_TRACE_PRINT  ;}
 #else
 #define PRT_IBMC_DEBUG(fmt, args...) 
 #endif
