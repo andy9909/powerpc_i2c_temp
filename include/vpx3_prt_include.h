@@ -38,7 +38,7 @@ DBGPRINT(RT_DEBUG_TRACE,("ioctl SIOCSIWGENIE length=%d, pointer=%x\n", wrqin->u.
 
 
 /*housir: 应用层调试开关 */
-#define UIBMC_DEBUG                     1            /*  */
+#define UIBMC_DEBUG                     0            /*  */
 
 
 
@@ -124,19 +124,19 @@ do{                                   \
 
 /*housir: 错误回显 */
 #if KI2C_DRIVER_ERROR
-#define PRT_KI2C_DRIVER_ERROR    {printk("[kernel module i2c_driver] "); __KERNEL_TRACE_ERR  ;}
+#define PRT_KI2C_DRIVER_ERROR     __KERNEL_TRACE_ERR
 #else
 #define PRT_KI2C_DRIVER_ERROR(fmt, args...) 
 #endif
 
 #if KTEMP_V_COLLECTION_ERROR
-#define PRT_KTEMP_V_COLLECTION_ERROR   {printk("[kernel module temp_v_collection] "); __KERNEL_TRACE_ERR  ;}
+#define PRT_KTEMP_V_COLLECTION_ERROR    __KERNEL_TRACE_ERR
 #else
 #define PRT_KTEMP_V_COLLECTION_ERROR(fmt, args...) 
 #endif
 
 #if KFPGA_ERROR
-#define PRT_KFPGA_ERROR     {printk("[kernel module fpga] "); __KERNEL_TRACE_ERR  ;}
+#define PRT_KFPGA_ERROR      __KERNEL_TRACE_ERR
 #else
 #define PRT_KFPGA_ERROR(fmt, args...) 
 #endif
@@ -145,14 +145,14 @@ do{                                   \
 
 /*housir: 调试回显 */
 #if UIBMC_DEBUG
-#define PRT_IBMC_DEBUG     { printf ("[app module ibmc] "); __USER_TRACE_PRINT  ;}
+#define PRT_IBMC_DEBUG     __USER_TRACE_PRINT
 #else
 #define PRT_IBMC_DEBUG(fmt, args...) 
 #endif
 
 /*housir: 错误回显 */
 #if UIBMC_ERROR
-#define PRT_IBMC_ERROR     { printf ("[app module ibmc] "); __USER_TRACE_PRINT_ERR  ;}
+#define PRT_IBMC_ERROR      __USER_TRACE_PRINT_ERR
 #else
 #define PRT_IBMC_ERROR(fmt, args...) 
 #endif

@@ -490,20 +490,57 @@ static int TempVInfoUpdata(void)
 /**
  * @brief 检查nfs状态 若nfs正常启动则向fpga中指定位置写1 否则写0
  *
- * @return 
+ * @return open 1 else close 0;
  */
-int check_nfs_status()
+static int check_nfs_status()
 {
-    unsigned char run_status = 0;
+    static unsigned char run_status = 0;
 
-    run_status = 1;
+    run_status = 1;/*housir: NFS port status  1成功 0 失败 */
+	struct sockaddr_in servaddr;
+	int servfd ;
+    unsigned long ul = 1;
+#define NFS_PORT        2049            /*  NFS的端口 用来检测 端口是否被打开*/
+#if 0
+	memset(&servaddr, 0, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	servaddr.sin_port = htons(NFS_PORT);
 
+	// 客户端调用connect连接NFS服务器端指定socket套接字
+    if ( -1 ==(servfd = socket(AF_INET, SOCK_DGRAM, 0)))
+    {
+        PRT_IBMC_ERROR("socket fail!\n");
+    }
+
+    ioctl(servfd, FIONBIO, &ul); //设置为非阻塞模式
+     
+    if( -1 == connect(servfd, (struct sockaddr *)&servaddr, sizeof(servaddr)))
+    {
+        run_status = 0;/*housir: NFS port fail */
+        PRT_IBMC_ERROR("socket connect fail!\n");
+    }
+    else
+    {
+        run_status = 1;
+        PRT_IBMC_DEBUG("NFS check connect success!\n");/*housir: NFS port success */
+    }
+
+    if ( 0 != close(servfd))
+    {
+        PRT_IBMC_ERROR("socket closed fail\n");
+    }
+    else
+    {
+        PRT_IBMC_DEBUG("socket closed success\n");
+    }
+#endif
     if (-1 == fpgaRegWrite(FPGA_SYS_RUN_STATUS_REG , run_status))
     {
         PRT_IBMC_ERROR("fpgaRegWrite FPGA_TEMP0_REG error!\n");
-    }        
+    }     
 
-    return (0);
+    return 0;
 }
 
 /*****************************************************************************
@@ -529,7 +566,7 @@ void main()
         PRT_IBMC_ERROR("open failed !\n");
         return ;
     }
-    check_nfs_status();
+
     /*自动设置网卡IP地址上电配置一次即可*/
     iRv = bmcAutoConfigEth();
     if(SET_SUCCESS != iRv)
@@ -543,7 +580,7 @@ void main()
         /*更新磁盘容量信息*/
         (void)nfsDiskInfoUpdate();
         (void)TempVInfoUpdata();
-
+        (void)check_nfs_status();
 
     }
     return;
