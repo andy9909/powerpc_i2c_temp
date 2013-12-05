@@ -1,0 +1,101 @@
+#############################################
+## Hello Everyone! 
+## May I have a attetion please:
+## If you have any questions, please contact:
+## housir : houwentaoff@gmail.com
+#############################################
+
+
+#########################################
+## 1, 编译Kernel - SDK - App
+#########################################
+################
+### In vpx3  ##
+################
+source /bin/8458-setenv.sh
+
+make clean
+make uImage
+make all
+make install_i2c
+make install_fpga
+make install_ibmc
+make install_ibmc_debug
+make install_dma
+make install_rapidio
+
+#########################################
+## 2, 编译烧写uboot
+#########################################
+################
+### In vpx3  ##
+################
+
+######################
+### In UBoot shell  ##
+######################
+//设置启动方式为flash启动。聂飞
+setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;cp.b 0xffb00000 0x1000000 0x400000;cp.b 0xffa00000 0xc00000 0x100000;cp.b 0xfd000000 0x2000000 0x1000000;mw.b 0xf000004f 0x10;bootm $loadaddr $ramdiskaddr $fdtaddr'
+//出现rootfs CRC错误时调整 rootfs 文件大小环境变量设置
+setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;cp.b 0xffb00000 0x1000000 0x400000;cp.b 0xffa00000 0xc00000 0x100000;cp.b 0xfd000000 0x2000000 0x1100000;mw.b 0xf000004f 0x10;bootm $loadaddr $ramdiskaddr $fdtaddr'
+
+//设置启动方式为tftp模式，去除该语句可以控制8001处于复位状态，不加载8001驱动 mw.b 0xf000004f 0x10;
+setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;mw.b 0xf000004f 0x10;tftp $ramdiskaddr $ramdiskfile;tftp $loadaddr $bootfile;tftp $fdtaddr $fdtfile;bootm $loadaddr $ramdiskaddr $fdtaddr'
+
+#########################################
+## 3, 编译烧写Kernel
+#########################################
+################
+### In vpx3  ##
+################
+make uImage
+
+######################
+### In UBoot shell  ##
+######################
+#########
+## Old ##
+#########
+//出现rootfs CRC错误时调整 rootfs 文件大小环境变量设置
+setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;cp.b 0xffb00000 0x1000000 0x400000;cp.b 0xffa00000 0xc00000 0x100000;cp.b 0xfd000000 0x2000000 0x1100000;mw.b 0xf000004f 0x10;bootm $loadaddr $ramdiskaddr $fdtaddr'
+#########
+## New ##
+#########
+//出现rootfs CRC错误时调整 rootfs 文件大小环境变量设置
+setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;cp.b 0xffb00000 0x1000000 0x400000;cp.b 0xffa00000 0xc00000 0x100000;cp.b 0xfd000000 0x2000000 0x1100000;mw.b 0xf000004f 0x10;bootm $loadaddr $ramdiskaddr $fdtaddr'
+#################
+## 从NFS加载FS ##
+#################
+
+##################
+## 从Nand加载FS ##
+##################
+//设置启动方式为flash启动。聂飞
+setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;cp.b 0xffb00000 0x1000000 0x400000;cp.b 0xffa00000 0xc00000 0x100000;cp.b 0xfd000000 0x2000000 0x1000000;mw.b 0xf000004f 0x10;bootm $loadaddr $ramdiskaddr $fdtaddr'
+
+save
+boot
+
+########################################
+## 4, 校验文件系统是否正常  
+########################################
+挂载Kernel跑起来后
+root@prophet:# cat /proc/mtd
+dev:    size   erasesize  name
+
+
+
+check the md0 devices
+# ls /dev/md0
+
+Check the contents are there
+# ls /mnt
+
+#########################################
+## 5, 正常运行时的 ENV
+#########################################
+
+uboot> printenv
+ 
+
+

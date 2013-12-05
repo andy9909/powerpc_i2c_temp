@@ -1,5 +1,5 @@
 # Comment/uncomment the following line to disable/enable debugging
-INCLUDE := /home/work/i2c_housir/ThreadMain/include/
+INCLUDE := $(SDKROOT)/include/ 
 DEBUG = y
 # Add your debugging flag (or not) to CFLAGS
 ifeq ($(DEBUG),y)
@@ -19,18 +19,19 @@ obj-m	:= fpga.o
 
 else
 
-KERNELDIR ?= /home/work/NFS/vpx3-ssd1/linux-3.6.11/
+KERNELDIR ?= $(KDIR)
 PWD       := $(shell pwd)
 
 default:
-	$(MAKE)  -C $(KERNELDIR) M=$(PWD) INCDIR=$(INCLUDE) modules ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu-
+	-@$(ECHO)  "\033[41;32m  Building fpga ...   \033[0m" 
+	$(MAKE)  -C $(KERNELDIR) M=$(PWD) INCDIR=$(INCLUDE) modules ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE)
 
 endif
 
 
 
 clean:
-	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions
+	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions .symvers Module.symvers modules.order
 
 depend .depend dep:
 	$(CC)  $(CFLAGS) -M *.c > .depend

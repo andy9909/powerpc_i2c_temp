@@ -1,10 +1,10 @@
 
-MACRO :=-DDBG__USER
 INCLUDE:=-I../../include
 
-CFLAGS:=$(INCLUDE) $(MACRO)
+CFLAGS:=$(INCLUDE) 
 CC=powerpc-linux-gnu-gcc
 ibmc.bin:ibmc.o
+	-@$(ECHO)  "\033[41;32m  Building bmc ...   \033[0m" 
 	$(CC) $< -o $@ 
 sensor_read_userspace_test:sensor_read_userspace_test.o
 	$(CC) $< -o $@ 

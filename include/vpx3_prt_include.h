@@ -20,7 +20,8 @@
 #ifndef __VPX3_PRT_INCLUDE_H
 #define __VPX3_PRT_INCLUDE_H
 
-#define DBG__KERNEL
+#define DBG__KERNEL       /*内核宏开关*/
+#define DBG__USER            /*  应用层宏开关*/
 /*housir: 驱动调试开关 */
 /*内核回显调用方式*/
 /*

@@ -497,11 +497,11 @@ static int check_nfs_status()
     static unsigned char run_status = 0;
 
     run_status = 1;/*housir: NFS port status  1成功 0 失败 */
+#if 0 /*housir: 用套接字连接nfs特有的端口2049 */
 	struct sockaddr_in servaddr;
 	int servfd ;
     unsigned long ul = 1;
 #define NFS_PORT        2049            /*  NFS的端口 用来检测 端口是否被打开*/
-#if 0
 	memset(&servaddr, 0, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -534,6 +534,27 @@ static int check_nfs_status()
     {
         PRT_IBMC_DEBUG("socket closed success\n");
     }
+#else/*housir: 利用shell命令查询进程名字 */
+    FILE *fp = popen("ps -e | grep \'nfsd\' | awk \'{print $1}\'", "r");
+    
+    char buffer[10] = {0};
+
+
+    if (NULL == fgets(buffer, 10, fp))
+    {
+        //写0
+        run_status = 0;/*housir: NFS port fail */
+        PRT_IBMC_ERROR("NFS check connect fail!\n");        
+    }
+    else/*nfs服务正常启动*/
+    {
+        //写1
+        run_status = 1;
+        PRT_IBMC_DEBUG("NFS check connect success!\n");/*housir: NFS port success */
+    }
+
+    pclose(fp); //关闭返回的文件指针，注意不是用fclose
+
 #endif
     if (-1 == fpgaRegWrite(FPGA_SYS_RUN_STATUS_REG , run_status))
     {
