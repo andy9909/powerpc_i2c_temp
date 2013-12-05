@@ -194,11 +194,6 @@ struct rio_dbell_msg {
 	u16 info;
 };
 
-
-extern void test_doorbell(unsigned char *);
-extern void testOutBoundSendMsg(unsigned char * str);
-
-
 /**
  * fsl_rio_tx_handler - MPC85xx outbound message interrupt handler
  * @irq: Linux interrupt number
@@ -372,15 +367,10 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 	int dsr;
 	struct fsl_rio_dbell *fsl_dbell = (struct fsl_rio_dbell *)dev_instance;
 	int i;
-	unsigned char  bin_content_ascii[30] = {"0x12 0x1212"};
 
 	dsr = in_be32(&fsl_dbell->dbell_regs->dsr);
 
 	pr_info("niefei RIO: doorbell reception ok\n");
-
-	//add by housir
-	test_doorbell(&bin_content_ascii[0]);
-
 	if (dsr & DOORBELL_DSR_TE) {
 		pr_info("RIO: doorbell reception error\n");
 		out_be32(&fsl_dbell->dbell_regs->dsr, DOORBELL_DSR_TE);
@@ -1021,9 +1011,6 @@ int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox)
 	static u32 uiOpenFlag = 0;
 	struct fsl_rmu *rmu = GET_RMM_HANDLE(mport);
 	unsigned char *pValue;
-
-	unsigned char bin_content_ascii[40] = {"0x12 0 0x18000000 0x10"};
-		
 	uMbox = v_uMbox;
 	usDestId = v_usDestId;
 	uiOpenId = (u32)usDestId;
@@ -1042,7 +1029,6 @@ int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox)
 		uiOpenFlag = 1;
 		return 0;
 	}
-	testOutBoundSendMsg(&bin_content_ascii[0]);
 	phys_buf = in_be32(&rmu->msg_regs->ifqdpar);
 
 	/* If no more messages, then bail out */
