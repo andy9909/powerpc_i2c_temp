@@ -1,7 +1,7 @@
 SUBDIRS=i2c dma rapidio fpga app/bmc 
 
 uImage:
-	-@$(ECHO)  "\033[41;32m  Building uImage ...   \033[0m"
+	-@$(ECHO)  -e "\033[41;32m  Building uImage ...   \033[0m"
 	$(MAKE) -C $(KDIR) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) uImage
 
 all:
@@ -29,14 +29,14 @@ rapidio:
 ##################
 all:install_i2c install_fpga install_ibmc install_ibmc_debug install_dma install_rapidio
 install_i2c:
-	    -@cp ./i2c/*.ko ${KTARGET}/lib/module/3.6.1/kernel/i2c/ -f   
+	    -cp ./i2c/*.ko ${KTARGET}/lib/modules/3.6.11/kernel/i2c/ -f   
 install_fpga:
-	    -@cp ./fpga/*.ko ${KTARGET}/lib/module/3.6.1/kernel/fpga/ -f   
+	    -cp ./fpga/*.ko ${KTARGET}/lib/modules/3.6.11/kernel/fpga/ -f   
 install_ibmc:
-	    -@cp ./app/ibmc.bin ${KTARGET}/usr/bin/ -f   
+	    -cp ./app/bmc/ibmc.bin ${KTARGET}/usr/bin/ -f   
 install_ibmc_debug:
-	    -@cp ./app/ibmc.bin.debug ${KTARGET}/usr/bin/ -f   
+	    -cp ./app/bmc/ibmc.bin ${KTARGET}/usr/bin/ibmc.bin.debug -f   
 install_dma:
-	    -@cp ./dma/*.ko ${KTARGET}/lib/module/3.6.1/kernel/i2c/ -f   
+	    -cp ./dma/*.ko ${KTARGET}/lib/modules/3.6.11/kernel/dma/ -f   
 install_rapidio:
-	    -@cp ./rapidio/*.ko ${KTARGET}/lib/module/3.6.1/kernel/i2c/ -f   
+	    -cp ./rapidio/*.ko ${KTARGET}/lib/modules/3.6.11/kernel/rapidio/ -f   
