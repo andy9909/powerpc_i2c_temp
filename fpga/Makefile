@@ -23,7 +23,7 @@ KERNELDIR ?= $(KDIR)
 PWD       := $(shell pwd)
 
 default:
-	-@$(ECHO)  "\033[41;32m  Building fpga ...   \033[0m" 
+	-@$(ECHO) -e "\033[41;32m  Building fpga ...   \033[0m" 
 	$(MAKE)  -C $(KERNELDIR) M=$(PWD) INCDIR=$(INCLUDE) modules ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE)
 
 endif

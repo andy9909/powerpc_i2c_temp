@@ -535,7 +535,7 @@ static int check_nfs_status()
         PRT_IBMC_DEBUG("socket closed success\n");
     }
 #else/*housir: 利用shell命令查询进程名字 */
-    FILE *fp = popen("ps -e | grep \'nfsd\' | awk \'{print $1}\'", "r");
+    FILE *fp = popen("ps -e | grep \'nfsd\' | awk \'{print $4}\' | grep \'\\[nfsd\\]\'", "r");
     
     char buffer[10] = {0};
 
