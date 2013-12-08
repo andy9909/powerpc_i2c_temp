@@ -11,3 +11,10 @@ log
 !.gitignore
 *.swp
 *.bak
+*.back
+*.jpg
+app/bmc/bmc.sh
+app/bmc/chechek_nfs.c
+temp/
+
+
