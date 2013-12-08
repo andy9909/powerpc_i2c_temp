@@ -31,7 +31,9 @@
 #include <linux/slab.h>
 
 #include "fsl_rio.h"
-
+/* BEGIN: Added by niefei, 2013/12/6   问题单号:修改MSG发送流程 */
+extern void InboundRecvMsgPro(struct rio_mport *mport);
+/* END:   Added by niefei, 2013/12/6 */
 #define GET_RMM_HANDLE(mport) \
 		(((struct rio_priv *)(mport->priv))->rmm_handle)
 
@@ -306,9 +308,12 @@ fsl_rio_rx_handler(int irq, void *dev_instance)
 		out_be32((void *)&rmu->msg_regs->isr, RIO_MSG_ISR_TE);
 		goto out;
 	}
-	printk("disable interruput\n");
-	out_be32((void *)&rmu->msg_regs->imr, in_be32(&rmu->msg_regs->isr) & 0xffffffbf);
+	//printk("disable interruput\n");
+	//out_be32((void *)&rmu->msg_regs->imr, in_be32(&rmu->msg_regs->isr) & 0xffffffbf);
 	/*end by niefei*/
+    /* BEGIN: Added by niefei, 2013/12/5   问题单号:修改MSG接收流程 */
+    InboundRecvMsgPro(port);
+    /* END:   Added by niefei, 2013/12/5 */
 	/* XXX Need to check/dispatch until queue empty */
 	if (isr & RIO_MSG_ISR_DIQI) {
 		/*
@@ -962,7 +967,10 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 	 if (uiSize < (RIO_MAX_MSG_SIZE - 4))
 		 memset(rmu->msg_tx_ring.virt_buffer[rmu->msg_tx_ring.tx_slot]
 				 + uiSize, 0, RIO_MAX_MSG_SIZE - uiSize);
-
+/*下面的操作是填充MSG 描述符的过程，RAPIO 在OPEN时申请了物理内存地址
+这块物理内存填充为MSG描述符，odqdpar寄存器指示了当前描述符的地址
+描述符中的内容RAPIDIO硬件会主动刷新到对应的寄存器中，软件不需要操作
+只需要刷新MSG描述符即可*/
 	 /* Set mbox field for message, and set destid */
 	 desc = (struct rio_tx_desc *)rmu->msg_tx_ring.virt
 					 + rmu->msg_tx_ring.tx_slot;
@@ -980,10 +988,12 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 	 omr = in_be32(&rmu->msg_regs->omr);
 	 printk("omr reg =%p,value = 0x%x\n",&rmu->msg_regs->omr,omr);
 	 out_be32(&rmu->msg_regs->omr, omr | RIO_MSG_OMR_MUI);
+/* BEGIN: Deleted by niefei, 2013/12/4   问题单号:修改MSG发送流程 */
     /*启动发送*/
-	out_be32(&rmu->msg_regs->omr, omr & 0xfffffffe);
-	out_be32(&rmu->msg_regs->omr, omr | 0x1);
+	//out_be32(&rmu->msg_regs->omr, omr & 0xfffffffe);
+	//out_be32(&rmu->msg_regs->omr, omr | 0x1);
 	 /* Go to next descriptor */
+/* END: Deleted by niefei, 2013/12/4 */
 	 if (++rmu->msg_tx_ring.tx_slot == rmu->msg_tx_ring.size)
 		 rmu->msg_tx_ring.tx_slot = 0;
 	 #if 0
@@ -991,6 +1001,49 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 	 out:
 	 return ret;
  }
+/*****************************************************************************
+ func : InboundMsgPro
+ description : RapidIO接收message 处理
+ input : 
+ output :
+ return :
+ 作者:聂飞
+ 时间:2013-12-6
+*****************************************************************************/
+void InboundRecvMsgPro(struct rio_mport *mport)
+{
+    void *buffer;
+    u32 phys_buf;
+    int buf_idx;
+    unsigned char *pValue = NULL;
+	struct fsl_rmu *rmu = GET_RMM_HANDLE(mport);
+        /*phys_buf值为当前需要处理MSG单元存放地址*/
+	phys_buf = in_be32(&rmu->msg_regs->ifqdpar);
+
+	/* If no more messages, then bail out  ，如果当前处理单元MSG与下一个要处理单元MSG
+    的地址相等，意味着没有需要处理的MSG*/
+	if (phys_buf == in_be32(&rmu->msg_regs->ifqepar))
+	goto out2;
+/*rmu->msg_rx_ring.phys是申请存放MSG连续空间的起始地址，每个MSG占用RIO_MAX_MSG_SIZE
+字节，余数运算可以计算出buf_idx，即获取第几个偏移MSG*/
+	buffer = rmu->msg_rx_ring.virt + (phys_buf
+					- rmu->msg_rx_ring.phys);
+	buf_idx = (phys_buf - rmu->msg_rx_ring.phys) / RIO_MAX_MSG_SIZE;
+    /*virt_buffer用于MSG存放，使用fsl_add_inb_buffer可以完成*/
+	if (!rmu->msg_rx_ring.virt_buffer[buf_idx]) 
+	{
+		printk(" niefei :RIO: inbound message copy failed, no buffers\n");
+		goto out1;
+	}
+    out1:
+    pValue = (unsigned char *)rmu->msg_rx_ring.virt_buffer[buf_idx];
+    printk("recv msg  frist byte = 0x%x\n",pValue[0]);
+	/*当软件接收完一帧MSG后，更新IMR的MI bit位RAPIDIO硬件使得IMFQDPAR 增加*/
+	setbits32(&rmu->msg_regs->imr, RIO_MSG_IMR_MI);
+    printk("get message success ,before update IMR_MI,qdpar =0x%x,qepar=0x%x\n",in_be32(&rmu->msg_regs->ifqdpar),in_be32(&rmu->msg_regs->ifqepar));
+	out2:
+	printk("rapiod user pro Msg buf here \n");
+}
 /*****************************************************************************
  func : endif
  description : RapidIO接收message
@@ -1006,38 +1059,65 @@ int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox)
 	void *buffer;
 	void *buf=NULL;
 	u32 phys_buf;
+    u32 uiEntriesNum = 8;
 	int buf_idx;
 	unsigned short usDestId = 0;
 	static u32 uiOpenFlag = 0;
 	struct fsl_rmu *rmu = GET_RMM_HANDLE(mport);
 	unsigned char *pValue;
+    
 	uMbox = v_uMbox;
 	usDestId = v_usDestId;
 	uiOpenId = (u32)usDestId;
-	buf = (void *)kmalloc(0x1000,GFP_KERNEL);
-	if(NULL == buf)
-	{
-		printk("error get msg kalloc  return\n");
-		return -1;
-	}
-	fsl_add_inb_buffer(mport,0,buf);
+/* BEGIN: Deleted by niefei, 2013/12/4   问题单号:修改getMSG流程 */
+	//buf = (void *)kmalloc(0x1000,GFP_KERNEL);
+	//if(NULL == buf)
+	//{
+	//	printk("error get msg kalloc  return\n");
+	//	return -1;
+	//}
+	//fsl_add_inb_buffer(mport,0,buf);
+    /* END: Deleted by niefei, 2013/12/4 */
 	//uiOpenId = 0x12;
 	if(uiOpenFlag == 0)
 	{
-		fsl_open_inb_mbox(mport,(void *)&uiOpenId,0,8);
+		fsl_open_inb_mbox(mport,(void *)&uiOpenId,0,uiEntriesNum);
 		printk("inbound get msg init\n");
-		uiOpenFlag = 1;
+        /* BEGIN: Added by niefei, 2013/12/4   问题单号:修改getMSG流程 */
+        buf = (void *)kmalloc(RIO_MAX_MSG_SIZE * (uiEntriesNum +1),GFP_KERNEL);
+        if(NULL == buf)
+        {
+            fsl_close_inb_mbox(mport,0);
+            printk("error get msg kalloc  return\n");
+            return -1;
+        }
+        while(rmu->msg_rx_ring.rx_slot < rmu->msg_rx_ring.size)
+        {
+            printk("added buf for rmu->msg_rx_ring.rx_slot[%d]\n ",rmu->msg_rx_ring.rx_slot ); 
+            fsl_add_inb_buffer(mport,0,(buf + rmu->msg_rx_ring.rx_slot * RIO_MAX_MSG_SIZE));
+             
+            if(0 == rmu->msg_rx_ring.rx_slot)
+            {
+                break;
+            }
+        }
+        /* END:   Added by niefei, 2013/12/4 */
+		//uiOpenFlag = 1;
 		return 0;
 	}
+    /*phys_buf值为当前需要处理MSG单元存放地址*/
 	phys_buf = in_be32(&rmu->msg_regs->ifqdpar);
 
-	/* If no more messages, then bail out */
+	/* If no more messages, then bail out  ，如果当前处理单元MSG与下一个要处理单元MSG
+    的地址相等，意味着没有需要处理的MSG*/
 	if (phys_buf == in_be32(&rmu->msg_regs->ifqepar))
 	goto out2;
-
+/*rmu->msg_rx_ring.phys是申请存放MSG连续空间的起始地址，每个MSG占用RIO_MAX_MSG_SIZE
+字节，余数运算可以计算出buf_idx，即获取第几个偏移MSG*/
 	buffer = rmu->msg_rx_ring.virt + (phys_buf
 					- rmu->msg_rx_ring.phys);
 	buf_idx = (phys_buf - rmu->msg_rx_ring.phys) / RIO_MAX_MSG_SIZE;
+    /*virt_buffer用于MSG存放，使用fsl_add_inb_buffer可以完成*/
 	buf = rmu->msg_rx_ring.virt_buffer[buf_idx];
 
 	if (!buf) 
@@ -1051,17 +1131,21 @@ int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox)
 	pValue = (unsigned char *)buf;
 	printk("recv msg  addr = %p,pValue=0x%x\n",buf,pValue[0]);
 	/* Clear the available buffer */
-	rmu->msg_rx_ring.virt_buffer[buf_idx] = NULL;
-
+    /* BEGIN: Deleted by niefei, 2013/12/4   问题单号:修改getMSG流程 */
+	//rmu->msg_rx_ring.virt_buffer[buf_idx] = NULL;
+    /* END: Deleted by niefei, 2013/12/4 */
 	out1:
-	printk("out111111\n");
+	printk("get message success,update IMR_MI\n");
+    /*当软件接收完一帧MSG后，更新IMR的MI bit位RAPIDIO硬件使得IMFQDPAR 增加*/
 	setbits32(&rmu->msg_regs->imr, RIO_MSG_IMR_MI);
+    /* BEGIN: Deleted by niefei, 2013/12/4   问题单号:修改getMSG流程 */
 	/*add by niefei*/
-	fsl_close_inb_mbox(mport,0);
-	uiOpenFlag=0;
+	//fsl_close_inb_mbox(mport,0);
+	//uiOpenFlag=0;
+    /* END: Deleted by niefei, 2013/12/4 */
 	/*end */
 	out2:
-	printk("out22222\n");
+	printk("NO msg recived\n");
 	//return buf;
 	return 0;
 }
@@ -1191,7 +1275,7 @@ fsl_open_outb_mbox(struct rio_mport *mport, void *dev_id, int mbox, int entries)
 	out_be32(&rmu->msg_regs->odqdpar, rmu->msg_tx_ring.phys);
 	out_be32(&rmu->msg_regs->odqepar, rmu->msg_tx_ring.phys);
 
-	/* Configure for snooping 允许处理器读取本地内存*/
+	/* Configure for snooping 允许处理程序缓存本地内存读取数据*/
 	out_be32(&rmu->msg_regs->osar, 0x00000004);
 
 	/* Clear interrupt status */
@@ -1450,7 +1534,11 @@ int fsl_add_inb_buffer(struct rio_mport *mport, int mbox, void *buf)
 		rc = -EINVAL;
 		goto out;
 	}
-
+/*rmu->msg_rx_ring.size在open函数中完成初始化，按照正常流程设计add_inb_buffer
+放在fsl_open_inb_mbox函数之后，可以使用一块连续物理空间完成所有
+rmu->msg_rx_ring.virt_buffer[0-entry]初始化，之后不再申请内存和add_inb_buffer
+也可以设计成首先判空rmu->msg_rx_ring.virt_buffer[rmu->msg_rx_ring.rx_slot]，根据需要申请
+内存空间*/
 	rmu->msg_rx_ring.virt_buffer[rmu->msg_rx_ring.rx_slot] = buf;
 	if (++rmu->msg_rx_ring.rx_slot == rmu->msg_rx_ring.size)
 		rmu->msg_rx_ring.rx_slot = 0;

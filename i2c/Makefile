@@ -33,6 +33,7 @@ endif
 
 
 clean:
+	-@$(ECHO) -e "\033[41;32m  Clearning i2c ...   \033[0m"
 	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions .symvers modules.order Module.symvers
 
 depend .depend dep:

@@ -25,6 +25,21 @@ rapidio:
 	$(MAKE) -C rapidio
 
 ##################
+###Purge module###
+##################
+.PHONY:purge_i2c purge_dma purge_fpga purge_bmc purge_rapidio
+purge_i2c:
+	$(MAKE) -C i2c clean
+purge_fpga:
+	$(MAKE) -C i2c clean
+purge_bmc:
+	$(MAKE) -C i2c clean
+purge_dma:
+	$(MAKE) -C i2c clean
+purge_rapidio:
+	$(MAKE) -C i2c clean
+
+##################
 #####INSTALL######
 ##################
 all:install_i2c install_fpga install_ibmc install_ibmc_debug install_dma install_rapidio

@@ -295,7 +295,9 @@ void test_doorbell(unsigned char * str)
 	u32 destid,data;
 	unsigned char *p=str;
 	u32 len;
-	
+
+	printk("jg test_doorbell %s\n",str);
+
 	p=strsep((char**)&str,(char*)" ");
 	destid=str2hex(p);
 

@@ -706,11 +706,13 @@ static int __init dmatest_init(void)
 	dma_cap_mask_t mask;
 	struct dma_chan *chan;
 	int err = 0;
+#if 0
 
 	printk("[module dmatest] ===> [%s]\n", __func__);
 
 	dma_cap_zero(mask);//Çå³ımask  
 	dma_cap_set(DMA_MEMCPY, mask);//ÉèÖÃ DMA_MEMCPY ÑÚÂë  
+
 #if 0
     //	for (;;) {
 #else
@@ -734,7 +736,7 @@ static int __init dmatest_init(void)
 #endif
 	printk("[module dmatest] <=== [%s]\n", __func__);
 
-
+#endif
 	return err;
 }
 /* when compiled-in wait for drivers to load first */

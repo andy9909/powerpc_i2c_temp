@@ -31,6 +31,7 @@ endif
 
 
 clean:
+	-@$(ECHO) -e "\033[41;32m  Cleaning fpga ...   \033[0m" 
 	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions .symvers Module.symvers modules.order
 
 depend .depend dep:

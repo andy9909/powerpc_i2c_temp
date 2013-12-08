@@ -160,6 +160,9 @@ static void dma_init(struct fsldma_chan *chan)
 	/* Reset the channel */
 	DMA_OUT(chan, &chan->regs->mr, 0, 32);/*设置模式REG 为 0，32 为设置宽度*/
 
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> chan->feature [0x%x]\n", chan->feature);
+
 	switch (chan->feature & FSL_DMA_IP_MASK) {
 	case FSL_DMA_IP_85XX:/*设置Mode Registers*/
 		/* Set the channel to below modes:
@@ -468,7 +471,7 @@ static int fsl_dma_alloc_chan_resources(struct dma_chan *dchan)
 {
 	struct fsldma_chan *chan = to_fsl_chan(dchan);
 
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+	//printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	/* Has this channel already been allocated? */
 	if (chan->desc_pool)
@@ -486,7 +489,7 @@ static int fsl_dma_alloc_chan_resources(struct dma_chan *dchan)
 		return -ENOMEM;
 	}
 	
-	printk("[module fsl dma] <=== [%s]\n", __func__);
+	//printk("[module fsl dma] <=== [%s]\n", __func__);
 
 	/* there is at least one descriptor free to be allocated */
 	return 1;
@@ -536,7 +539,7 @@ static void fsl_dma_free_chan_resources(struct dma_chan *dchan)
 	struct fsldma_chan *chan = to_fsl_chan(dchan);
 	unsigned long flags;
 	
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	chan_dbg(chan, "free all channel resources\n");
 	spin_lock_irqsave(&chan->desc_lock, flags);
@@ -547,7 +550,7 @@ static void fsl_dma_free_chan_resources(struct dma_chan *dchan)
 	dma_pool_destroy(chan->desc_pool);
 	chan->desc_pool = NULL;
 	
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 }
 
 static struct dma_async_tx_descriptor *
@@ -556,7 +559,7 @@ fsl_dma_prep_interrupt(struct dma_chan *dchan, unsigned long flags)
 	struct fsldma_chan *chan;
 	struct fsl_desc_sw *new;
 
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	if (!dchan)
 		return NULL;
@@ -578,7 +581,7 @@ fsl_dma_prep_interrupt(struct dma_chan *dchan, unsigned long flags)
 	/* Set End-of-link to the last link descriptor of new list */
 	set_ld_eol(chan, new);
 
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	return &new->async_tx;
 }
@@ -592,7 +595,7 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	struct fsl_desc_sw *first = NULL, *prev = NULL, *new;
 	size_t copy;
 
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+	//printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	if (!dchan)
 		return NULL;
@@ -640,7 +643,7 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	/* Set End-of-link to the last link descriptor of new list */
 	set_ld_eol(chan, new);
 
-	printk("[module fsl dma] <=== [%s]\n", __func__);
+	//printk("[module fsl dma] <=== [%s]\n", __func__);
 
 	return &first->async_tx;
 
@@ -663,7 +666,7 @@ static struct dma_async_tx_descriptor *fsl_dma_prep_sg(struct dma_chan *dchan,
 	dma_addr_t dst, src;
 	size_t len;
 
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	/* basic sanity checks */
 	if (dst_nents == 0 || src_nents == 0)
@@ -720,7 +723,7 @@ static struct dma_async_tx_descriptor *fsl_dma_prep_sg(struct dma_chan *dchan,
 		dst_avail -= len;
 		src_avail -= len;
 
-		printk("[module fsl dma] <=== [%s]\n", __func__);
+//		printk("[module fsl dma] <=== [%s]\n", __func__);
 
 fetch:
 		/* fetch the next dst scatterlist entry */
@@ -986,13 +989,13 @@ static void fsl_dma_memcpy_issue_pending(struct dma_chan *dchan)
 	struct fsldma_chan *chan = to_fsl_chan(dchan);
 	unsigned long flags;
 	
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	spin_lock_irqsave(&chan->desc_lock, flags);
 	fsl_chan_xfer_ld_queue(chan);
 	spin_unlock_irqrestore(&chan->desc_lock, flags);
 
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 }
 
 /**
@@ -1354,7 +1357,7 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 	struct device_node *child;
 	int err;
 
-	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 	
 	fdev = kzalloc(sizeof(*fdev), GFP_KERNEL);
 	if (!fdev) {
@@ -1430,7 +1433,7 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 
 	dma_async_device_register(&fdev->common);
 
-	printk("[module fsl dma] <=== [%s]\n", __func__);
+//	printk("[module fsl dma] <=== [%s]\n", __func__);
 
 	return 0;
 

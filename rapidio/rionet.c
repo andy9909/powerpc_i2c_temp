@@ -642,6 +642,64 @@ static void test_disk(void)
 {
 	printk("jg test_disk\n");
 }
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  format_space
+ *  Description:格式化输入字符串，过滤连续的空格为单个空格
+ *  Param      : *str  [INOUT]
+ *  Return     :
+ * =====================================================================================
+ */
+
+void format_space(unsigned char *str)
+{
+#define IN 0            /* 位于空格串中间*/
+#define OUT 1           /* 位于空格串外面*/
+    unsigned char status=IN;/*过滤开头部分连续的字符串*/
+    unsigned char *pos =NULL;
+	unsigned char *src = str;
+    int i=0;
+			
+    while(*str != '\0')
+    {
+        if(' ' == *str)
+        {
+            if(status == IN)
+            {
+                *str = '\0';
+                pos = str;
+                while(' ' == *(str+1))
+                {
+                    str++;
+                }
+                i = 0;
+                while (str[i+1] != '\0')
+                {
+                    pos[i] = str[i+1];
+                    i++;
+                }
+                pos[i] = '\0';
+                continue;
+            }
+            else
+            {
+                status = IN;
+            }
+        }
+        else
+        {
+            status = OUT;
+        }
+        str++;
+    }
+
+	src[strlen(src)-1] = (src[strlen(src)-1] == ' ' ? '\0' : src[strlen(src)-1]);/*把尾巴的空格去掉*/
+
+    return ;
+}		/* -----  end of function format_space  ----- */
+
+
 extern void read_memory_map(void);
 extern void test_riooutb(unsigned char * str);
 extern void test_rioinb(unsigned char * str);
@@ -666,6 +724,9 @@ static ssize_t wan_write(struct file *file,const char __user *buf, size_t count,
 
 	printk("jg write %s,%d\n",bin_content_ascii, count);
     *ppos += count;
+
+	
+	format_space(bin_content_ascii);
 
 	if(!memcmp(bin_content_ascii,"meminfo",sizeof("meminfo")-1))
 	{
