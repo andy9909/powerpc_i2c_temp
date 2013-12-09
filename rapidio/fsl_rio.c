@@ -154,7 +154,7 @@ static int fsl_local_config_write(struct rio_mport *mport,
 }
 
 #if 1//jg.xu
-static struct rio_mport *mem_mport;
+struct rio_mport *mem_mport;
 static u32 rio_target_type=0x80f55000;
 static void set_target_type(u32 type)
 {

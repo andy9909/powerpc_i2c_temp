@@ -196,6 +196,9 @@ struct rio_dbell_msg {
 	u16 info;
 };
 
+extern struct rio_mport *mem_mport;
+
+
 /**
  * fsl_rio_tx_handler - MPC85xx outbound message interrupt handler
  * @irq: Linux interrupt number
@@ -300,6 +303,12 @@ fsl_rio_rx_handler(int irq, void *dev_instance)
 	int isr;
 	struct rio_mport *port = (struct rio_mport *)dev_instance;
 	struct fsl_rmu *rmu = GET_RMM_HANDLE(port);
+	
+#ifdef MEASURE_TIME /*测量时间时打开，回发指定的门铃由对方计算时间*/ 
+
+	fsl_rio_doorbell_send(mem_mport,0,0x12,0xaa);
+
+#endif
 
 	isr = in_be32(&rmu->msg_regs->isr);
 
@@ -308,7 +317,11 @@ fsl_rio_rx_handler(int irq, void *dev_instance)
 		out_be32((void *)&rmu->msg_regs->isr, RIO_MSG_ISR_TE);
 		goto out;
 	}
-	//printk("disable interruput\n");
+	
+#ifndef MEASURE_TIME
+	printk("disable interruput\n");
+#endif
+
 	//out_be32((void *)&rmu->msg_regs->imr, in_be32(&rmu->msg_regs->isr) & 0xffffffbf);
 	/*end by niefei*/
     /* BEGIN: Added by niefei, 2013/12/5   问题单号:修改MSG接收流程 */
@@ -372,6 +385,11 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 	int dsr;
 	struct fsl_rio_dbell *fsl_dbell = (struct fsl_rio_dbell *)dev_instance;
 	int i;
+	
+#ifdef MEASURE_TIME /*测量时间时打开，回发指定的门铃由对方计算时间*/ 
+    /*add by housir  use to  measure time */
+	fsl_rio_doorbell_send(mem_mport,0,0x12,0x55);
+#endif
 
 	dsr = in_be32(&fsl_dbell->dbell_regs->dsr);
 
@@ -722,13 +740,16 @@ int fsl_rio_doorbell_send(struct rio_mport *mport,
  {
 	 unsigned int uiTimeOut = 0x100;
 	 u32 uiVal = 0;
+	 
+#ifndef MEASURE_TIME /*测量时间时打开，回发指定的门铃由对方计算时间*/ 
 	 printk("fsl_doorbell_send: index %d destid %4.4x data %4.4x\n",
 		  index, destid, data);
+#endif
  
 	 /* In the serial version silicons, such as MPC8548, MPC8641,
 	  * below operations is must be.
 	  */
-	 printk("jg odsr 1 %x,%p\n", in_be32(&dbell->dbell_regs->odsr),&dbell->dbell_regs->odsr);
+	 //printk("jg odsr 1 %x,%p\n", in_be32(&dbell->dbell_regs->odsr),&dbell->dbell_regs->odsr);
 	 while(uiTimeOut--)
 	 {
 		 uiVal = in_be32(&dbell->dbell_regs->odsr);
@@ -741,7 +762,7 @@ int fsl_rio_doorbell_send(struct rio_mport *mport,
 		 }
 	 }
  
-	 printk("jg uiTimeOut %x\n",uiTimeOut);
+	 //printk("jg uiTimeOut %x\n",uiTimeOut);
 		 
 	 out_be32(&dbell->dbell_regs->odmr, 0x00000000);
 	 //out_be32(&dbell->dbell_regs->odretcr, 0x00000004);
@@ -752,14 +773,19 @@ int fsl_rio_doorbell_send(struct rio_mport *mport,
 	 out_be32(&dbell->dbell_regs->oddatr,uiVal);
 			 
 	 uiVal = in_be32(&dbell->dbell_regs->oddatr);
+
+#ifdef MEASURE_TIME /*测量时间时打开，回发指定的门铃由对方计算时间*/ 
 	 printk("jg uiVal %x\n",uiVal);
+//#include "aaaaa.h"
+#endif
+
 	 uiVal |= data;
 	 out_be32(&dbell->dbell_regs->oddatr,uiVal);
 		 }
 	 //out_be32(&dbell->dbell_regs->oddatr,(index << 20) | data);
 	 out_be32(&dbell->dbell_regs->odmr, 0x00000001);
 	 mdelay(50);//////////////////???????????????????????
-	 printk("jg odsr 2 %x\n", in_be32(&dbell->dbell_regs->odsr));
+	 //printk("jg odsr 2 %x\n", in_be32(&dbell->dbell_regs->odsr));
 	 return 0;
  }
 
