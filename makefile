@@ -2,7 +2,7 @@ SUBDIRS=i2c dma rapidio fpga app/bmc
 
 uImage:
 	-@$(ECHO)  -e "\033[41;32m  Building uImage ...   \033[0m"
-	$(MAKE) -C $(KDIR) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) uImage
+	$(MAKE) -C $(KDIR) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) uImage 
 
 all:
 		for d in $(SUBDIRS); do [ -d $$d ] && $(MAKE) -C $$d; done
