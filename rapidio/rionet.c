@@ -846,7 +846,9 @@ static int pci_test_probe (struct pci_dev *pdev, const struct pci_device_id *id)
 	int err;
 	int retval = -ENXIO;
 	unsigned long mem_addr, mem_len;
-
+	
+	printk("===> [%s]\n", __func__);
+	
 	err = pci_enable_device(pdev);
 	if (err) {
 		printk("can't enable pci test device %d\n", err);
@@ -870,6 +872,8 @@ static int pci_test_probe (struct pci_dev *pdev, const struct pci_device_id *id)
 		//return -EBUSY;
 	
 	set_rioinb((u32)mem_addr,0x40000000,(u32)mem_len,0);
+
+	printk("===> [%s]\n", __func__);
 	
 	return 0;
 out_disable_device:

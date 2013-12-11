@@ -439,7 +439,7 @@ void read_memory_map(void)
 
 	uiSize = str2hex(str);
 	iRv = OutBoundSendMsg(mem_mport,usDestId,uMbox,buffer,uiSize);
-	printk("irv = 0x%x\n",iRv);
+//	printk("irv = 0x%x\n",iRv);
 	return;
 }
 /*****************************************************************************

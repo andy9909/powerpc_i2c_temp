@@ -3,7 +3,7 @@
  *       Copyright (c), 2013-2020, Prophet C&S.
  *       Filename:  main.c
  *
- *    Description:  产生一个G的文件,用以测试
+ *    Description:  产生一个G的文件,用以测试速度
  *         Others:
  *   
  *        Version:  1.0
