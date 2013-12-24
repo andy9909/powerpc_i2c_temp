@@ -87,8 +87,8 @@ typedef u64 __bitwise v64;
 typedef u32 __bitwise v32;
 
 struct fsl_dma_ld_hw {
-	v64 src_addr;
-	v64 dst_addr;
+	v64 src_addr;/*包含源地址和源地址属性寄存器*/
+	v64 dst_addr;/*u64包含目的地址和目的地址属性寄存器*/
 	v64 next_ln_addr;
 	v32 count;
 	v32 reserve;
@@ -105,8 +105,8 @@ struct fsldma_chan_regs {
 	u32 mr;		/* 0x00 - Mode Register */
 	u32 sr;		/* 0x04 - Status Register */
 	u64 cdar;	/* 0x08 - Current descriptor address register */
-	u64 sar;	/* 0x10 - Source Address Register */
-	u64 dar;	/* 0x18 - Destination Address Register */
+	u64 sar;	/* 0x10 - Source Address Register U64 包含了源地址属性寄存器*/
+	u64 dar;	/* 0x18 - Destination Address Register  U64 包含了目的地址属性寄存器*/
 	u32 bcr;	/* 0x20 - Byte Count Register */
 	u64 ndar;	/* 0x24 - Next Descriptor Address Register */
 };

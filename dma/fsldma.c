@@ -48,7 +48,9 @@ static const char msg_ld_oom[] = "No free memory for link descriptor";
 /*
  * Register Helpers
  */
-
+/* BEGIN: Added by niefei, 2013/12/18   问题单号:新增rio_dma_nread_test函数 */
+static struct fsldma_device *rio_fdev;
+/* END:   Added by niefei, 2013/12/18 */
 static void set_sr(struct fsldma_chan *chan, u32 val)
 {
 	DMA_OUT(chan, &chan->regs->sr, val, 32);
@@ -108,7 +110,6 @@ static dma_addr_t get_desc_src(struct fsldma_chan *chan,
 		? ((u64)FSL_DMA_SATR_SREADTYPE_SNOOP_READ << 32) : 0;
 	return DMA_TO_CPU(chan, desc->hw.src_addr, 64) & ~snoop_bits;
 }
-
 static void set_desc_dst(struct fsldma_chan *chan,
 			 struct fsl_dma_ld_hw *hw, dma_addr_t dst)
 {
@@ -158,13 +159,10 @@ static void set_ld_eol(struct fsldma_chan *chan, struct fsl_desc_sw *desc)
 static void dma_init(struct fsldma_chan *chan)
 {
 	/* Reset the channel */
-	DMA_OUT(chan, &chan->regs->mr, 0, 32);/*设置模式REG 为 0，32 为设置宽度*/
-
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
-//	printk("[module fsl dma] ===> chan->feature [0x%x]\n", chan->feature);
+	DMA_OUT(chan, &chan->regs->mr, 0, 32);
 
 	switch (chan->feature & FSL_DMA_IP_MASK) {
-	case FSL_DMA_IP_85XX:/*设置Mode Registers*/
+	case FSL_DMA_IP_85XX:
 		/* Set the channel to below modes:
 		 * EIE - Error interrupt enable
 		 * EOLNIE - End of links interrupt enable
@@ -203,7 +201,9 @@ static void dma_start(struct fsldma_chan *chan)
 
 	mode = DMA_IN(chan, &chan->regs->mr, 32);
 
-	if (chan->feature & FSL_DMA_CHAN_PAUSE_EXT) {
+	if (chan->feature & FSL_DMA_CHAN_PAUSE_EXT)
+		{
+		/*初始化传输计数寄存器为0*/
 		DMA_OUT(chan, &chan->regs->bcr, 0, 32);
 		mode |= FSL_DMA_MR_EMP_EN;
 	} else {
@@ -471,8 +471,6 @@ static int fsl_dma_alloc_chan_resources(struct dma_chan *dchan)
 {
 	struct fsldma_chan *chan = to_fsl_chan(dchan);
 
-	//printk("[module fsl dma] ===> [%s]\n", __func__);
-
 	/* Has this channel already been allocated? */
 	if (chan->desc_pool)
 		return 1;
@@ -488,8 +486,6 @@ static int fsl_dma_alloc_chan_resources(struct dma_chan *dchan)
 		chan_err(chan, "unable to allocate descriptor pool\n");
 		return -ENOMEM;
 	}
-	
-	//printk("[module fsl dma] <=== [%s]\n", __func__);
 
 	/* there is at least one descriptor free to be allocated */
 	return 1;
@@ -538,8 +534,6 @@ static void fsl_dma_free_chan_resources(struct dma_chan *dchan)
 {
 	struct fsldma_chan *chan = to_fsl_chan(dchan);
 	unsigned long flags;
-	
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	chan_dbg(chan, "free all channel resources\n");
 	spin_lock_irqsave(&chan->desc_lock, flags);
@@ -549,8 +543,6 @@ static void fsl_dma_free_chan_resources(struct dma_chan *dchan)
 
 	dma_pool_destroy(chan->desc_pool);
 	chan->desc_pool = NULL;
-	
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
 }
 
 static struct dma_async_tx_descriptor *
@@ -558,8 +550,6 @@ fsl_dma_prep_interrupt(struct dma_chan *dchan, unsigned long flags)
 {
 	struct fsldma_chan *chan;
 	struct fsl_desc_sw *new;
-
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	if (!dchan)
 		return NULL;
@@ -581,11 +571,85 @@ fsl_dma_prep_interrupt(struct dma_chan *dchan, unsigned long flags)
 	/* Set End-of-link to the last link descriptor of new list */
 	set_ld_eol(chan, new);
 
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
-
 	return &new->async_tx;
 }
+/* BEGIN: Added by niefei, 2013/12/16   问题单号:新增rio_dma_nread_test函数 */
+static void __devinit rio_dma_nread_callback(void *dma_async_param)
+{
+	struct completion *cmp = dma_async_param;
 
+	complete(cmp);
+}
+/**********************************************************************************
+函数名:rio_dma_nread
+用途:完成rapidio dma 操作，实现将RioAddr空间数据DMA到本地内存
+作者:聂飞
+时间:2013-12-18
+**********************************************************************************/
+void rio_dma_nread(dma_addr_t stLoalAddr, dma_addr_t stRioAddr,
+	size_t len, unsigned long flags)
+{
+    int i;
+    u8 *src;
+    u8 *dest;
+    struct dma_device *dma = &rio_fdev->common;
+    struct dma_chan *dma_chan;
+    struct dma_async_tx_descriptor *tx;
+    dma_addr_t dma_dest, dma_src;
+    dma_cookie_t cookie;
+    int err = 0;
+    struct completion stDmacmp;
+    unsigned long tmo;
+    unsigned long flags;
+
+    /* Start copy, using first DMA channel */
+    dma_chan = container_of(dma->channels.next, struct dma_chan,
+                device_node);
+    if (fsl_dma_alloc_chan_resources(dma_chan) < 1) {
+        printk("rio_dma nread cannot allocate chan resource\n");
+        err = -ENODEV;
+        goto out;
+    }
+
+    flags = DMA_COMPL_SRC_UNMAP_SINGLE | DMA_COMPL_DEST_UNMAP_SINGLE |
+        DMA_PREP_INTERRUPT;
+    /*在下述函数中实现源/目的属性寄存器设置待完成?????*/
+    tx = fsl_dma_prep_memcpy(dma_chan, dma_dest, dma_src,
+                          len, flags);
+    if (!tx) {
+        printk("rio_dma nread prep failed, disabling\n");
+        err = -ENODEV;
+        goto free_resources;
+    }
+
+    async_tx_ack(tx);
+    init_completion(&stDmacmp);
+    tx->callback = rio_dma_nread_callback;
+    tx->callback_param = &stDmacmp;
+    cookie = tx->tx_submit(tx);
+    if (cookie < 0) {
+        printk("rio_dma nread setup failed, disabling\n");
+        err = -ENODEV;
+        goto free_resources;
+    }
+    fsl_dma_memcpy_issue_pending(dma_chan);
+
+    tmo = wait_for_completion_timeout(&stDmacmp, msecs_to_jiffies(3000));
+
+    if (tmo == 0 || fsl_tx_status(dma_chan, cookie, NULL)!= DMA_SUCCESS) 
+   {
+        printk("rio_dma nread copy timed out, disabling\n");
+        err = -ENODEV;
+        goto free_resources;
+    }
+    free_resources:
+        fsl_dma_free_chan_resources(dma_chan);
+    out:
+        return err;
+}
+
+
+/* END:   Added by niefei, 2013/12/16 */
 static struct dma_async_tx_descriptor *
 fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	dma_addr_t dma_dst, dma_addr_t dma_src,
@@ -594,8 +658,6 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	struct fsldma_chan *chan;
 	struct fsl_desc_sw *first = NULL, *prev = NULL, *new;
 	size_t copy;
-
-	//printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	if (!dchan)
 		return NULL;
@@ -608,6 +670,7 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	do {
 
 		/* Allocate the link descriptor from DMA pool */
+        /*在调用该函数之前需要创建内存池*/
 		new = fsl_dma_alloc_descriptor(chan);
 		if (!new) {
 			chan_err(chan, "%s\n", msg_ld_oom);
@@ -615,7 +678,7 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 		}
 
 		copy = min(len, (size_t)FSL_DMA_BCR_MAX_CNT);
-
+		/*设置DMA传输计数，源地址，目的地址*/
 		set_desc_cnt(chan, &new->hw, copy);
 		set_desc_src(chan, &new->hw, dma_src);
 		set_desc_dst(chan, &new->hw, dma_dst);
@@ -643,8 +706,6 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	/* Set End-of-link to the last link descriptor of new list */
 	set_ld_eol(chan, new);
 
-	//printk("[module fsl dma] <=== [%s]\n", __func__);
-
 	return &first->async_tx;
 
 fail:
@@ -665,8 +726,6 @@ static struct dma_async_tx_descriptor *fsl_dma_prep_sg(struct dma_chan *dchan,
 	size_t dst_avail, src_avail;
 	dma_addr_t dst, src;
 	size_t len;
-
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	/* basic sanity checks */
 	if (dst_nents == 0 || src_nents == 0)
@@ -722,8 +781,6 @@ static struct dma_async_tx_descriptor *fsl_dma_prep_sg(struct dma_chan *dchan,
 		/* update metadata */
 		dst_avail -= len;
 		src_avail -= len;
-
-//		printk("[module fsl dma] <=== [%s]\n", __func__);
 
 fetch:
 		/* fetch the next dst scatterlist entry */
@@ -988,14 +1045,10 @@ static void fsl_dma_memcpy_issue_pending(struct dma_chan *dchan)
 {
 	struct fsldma_chan *chan = to_fsl_chan(dchan);
 	unsigned long flags;
-	
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	spin_lock_irqsave(&chan->desc_lock, flags);
 	fsl_chan_xfer_ld_queue(chan);
 	spin_unlock_irqrestore(&chan->desc_lock, flags);
-
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
 }
 
 /**
@@ -1357,8 +1410,6 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 	struct device_node *child;
 	int err;
 
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
-	
 	fdev = kzalloc(sizeof(*fdev), GFP_KERNEL);
 	if (!fdev) {
 		dev_err(&op->dev, "No enough memory for 'priv'\n");
@@ -1370,6 +1421,7 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 	INIT_LIST_HEAD(&fdev->common.channels);
 
 	/* ioremap the registers for use */
+    /*使用IO map 将寄存器映射到内核空间方便操作*/
 	fdev->regs = of_iomap(op->dev.of_node, 0);
 	if (!fdev->regs) {
 		dev_err(&op->dev, "unable to ioremap registers\n");
@@ -1379,11 +1431,12 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 
 	/* map the channel IRQ if it exists, but don't hookup the handler yet */
 	fdev->irq = irq_of_parse_and_map(op->dev.of_node, 0);
-
+    /*设置DMA的功能属性*/
 	dma_cap_set(DMA_MEMCPY, fdev->common.cap_mask);
 	dma_cap_set(DMA_INTERRUPT, fdev->common.cap_mask);
 	dma_cap_set(DMA_SG, fdev->common.cap_mask);
 	dma_cap_set(DMA_SLAVE, fdev->common.cap_mask);
+    
 	fdev->common.device_alloc_chan_resources = fsl_dma_alloc_chan_resources;
 	fdev->common.device_free_chan_resources = fsl_dma_free_chan_resources;
 	fdev->common.device_prep_dma_interrupt = fsl_dma_prep_interrupt;
@@ -1404,8 +1457,10 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 	 * of_platform_bus_remove(). Instead, we manually instantiate every DMA
 	 * channel object.
 	 */
+	 /*扫描设备树DTS 文件，for循环完成所有通道*/
 	for_each_child_of_node(op->dev.of_node, child) {
 		if (of_device_is_compatible(child, "fsl,eloplus-dma-channel")) {
+            /*sbc8548 probe dma 完成了chan 和DMA的初始化*/
 			fsl_dma_chan_probe(fdev, child,
 				FSL_DMA_IP_85XX | FSL_DMA_BIG_ENDIAN,
 				"fsl,eloplus-dma-channel");
@@ -1432,10 +1487,10 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 	}
 
 	dma_async_device_register(&fdev->common);
-
-//	printk("[module fsl dma] <=== [%s]\n", __func__);
-
-	return 0;
+    /* BEGIN: Added by niefei, 2013/12/18   问题单号:新增rio_dma_nread_test函数 */
+    rio_fdev = fdev;
+    /* END:   Added by niefei, 2013/12/18 */
+    return 0;
 
 out_free_fdev:
 	irq_dispose_mapping(fdev->irq);
