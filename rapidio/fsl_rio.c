@@ -154,6 +154,7 @@ static int fsl_local_config_write(struct rio_mport *mport,
 }
 
 #if 1//jg.xu
+//static/*housir: 为测试时间 加 */
 struct rio_mport *mem_mport;
 static u32 rio_target_type=0x80f55000;
 static void set_target_type(u32 type)
@@ -308,6 +309,39 @@ void test_doorbell(unsigned char * str)
 	fsl_rio_doorbell_send(mem_mport,0,destid,data);
 	
 }
+/**/
+void test_nread(unsigned char * str)
+{
+	u32 destid,localport,localaddr,rioaddr,bytecnt, iRv;
+	unsigned char *p=str;
+	u32 len;
+
+	printk("housir test_nread %s\n",str);
+
+	p=strsep((char**)&str,(char*)" ");
+	localport=str2hex(p);
+
+	p=strsep((char**)&str,(char*)" ");
+	destid=str2hex(p);
+
+	p=strsep((char**)&str,(char*)" ");
+	localaddr=str2hex(p);
+
+	p=strsep((char**)&str,(char*)" ");
+	rioaddr=str2hex(p);
+
+
+
+	len=strlen(str);
+	str[len-1]='\0';
+	bytecnt = str2hex(str);
+
+	iRv = rio_dma_nread(0, destid, localaddr, rioaddr, bytecnt);
+	
+	printk("==>[%s]:irv = 0x%x\n", __func__, iRv);
+	
+}
+
 
 void test_riooutb(unsigned char * str) //localaddr rioaddr size destid window(1~6)
 {
@@ -474,7 +508,7 @@ void read_memory_map(void)
 	uMbox =str2hex(p);
 	
 	iRv = InBoundGetMsg(mem_mport,usDestId,uMbox);
-	printk("irv = 0x%x\n",iRv);
+//	printk("irv = 0x%x\n",iRv);
 	return;
 }
 
@@ -622,7 +656,7 @@ static inline void fsl_rio_info(struct device *dev, u32 ccsr)
 			str = "Unknown";
 			break;
 		}
-		dev_info(dev, "Hardware port width: %s\n", str);
+//		dev_info(dev, "Hardware port width: %s\n", str);
 
 		switch ((ccsr >> 27) & 7) {
 		case 0:
@@ -638,14 +672,20 @@ static inline void fsl_rio_info(struct device *dev, u32 ccsr)
 			str = "Unknown";
 			break;
 		}
+#if 0
 		dev_info(dev, "Training connection status: %s\n", str);
-	} else {
+#endif
+    } else {
 		/* Parallel phy */
 		if (!(ccsr & 0x80000000))
-			dev_info(dev, "Output port operating in 8-bit mode\n");
+        {
+//			dev_info(dev, "Output port operating in 8-bit mode\n");
+        }
 		if (!(ccsr & 0x08000000))
-			dev_info(dev, "Input port operating in 8-bit mode\n");
-	}
+        {
+//			dev_info(dev, "Input port operating in 8-bit mode\n");
+	    }
+    }
 }
 
 /**
@@ -685,10 +725,12 @@ int fsl_rio_setup(struct platform_device *dev)
 				dev->dev.of_node->full_name);
 		return -EFAULT;
 	}
+    /*housir: 回显屏蔽 */
+#if 0  
 	dev_info(&dev->dev, "Of-device full name %s\n",
 			dev->dev.of_node->full_name);
 	dev_info(&dev->dev, "Regs: %pR\n", &regs);
-
+#endif
 	rio_regs_win = ioremap(regs.start, resource_size(&regs));
 	if (!rio_regs_win) {
 		dev_err(&dev->dev, "Unable to map rio register window\n");
@@ -749,7 +791,7 @@ int fsl_rio_setup(struct platform_device *dev)
 	}
 	dbell->dev = &dev->dev;
 	dbell->bellirq = irq_of_parse_and_map(np, 1);
-	dev_info(&dev->dev, "bellirq: %d\n", dbell->bellirq);
+//	dev_info(&dev->dev, "bellirq: %d\n", dbell->bellirq);
 
 	aw = of_n_addr_cells(np);
 	dt_range = of_get_property(np, "reg", &rlen);
@@ -777,7 +819,7 @@ int fsl_rio_setup(struct platform_device *dev)
 	}
 	pw->dev = &dev->dev;
 	pw->pwirq = irq_of_parse_and_map(np, 0);
-	dev_info(&dev->dev, "pwirq: %d\n", pw->pwirq);
+//	dev_info(&dev->dev, "pwirq: %d\n", pw->pwirq);
 	aw = of_n_addr_cells(np);
 	dt_range = of_get_property(np, "reg", &rlen);
 	if (!dt_range) {
@@ -822,8 +864,8 @@ int fsl_rio_setup(struct platform_device *dev)
 		range_start = of_read_number(dt_range + aw, paw);
 		range_size = of_read_number(dt_range + aw + paw, sw);
 
-		dev_info(&dev->dev, "%s: LAW start 0x%016llx, size 0x%016llx.\n",
-				np->full_name, range_start, range_size);
+//		dev_info(&dev->dev, "%s: LAW start 0x%016llx, size 0x%016llx.\n",
+//				np->full_name, range_start, range_size);
 
 		port = kzalloc(sizeof(struct rio_mport), GFP_KERNEL);
 		if (!port)
@@ -871,7 +913,7 @@ int fsl_rio_setup(struct platform_device *dev)
 			kfree(port);
 			continue;
 		}
-		dev_info(&dev->dev, "RapidIO PHY type: Serial\n");
+//		dev_info(&dev->dev, "RapidIO PHY type: Serial\n");
 		/* Checking the port training status */
 		if (in_be32((priv->regs_win + RIO_ESCSR + i*0x20)) & 1) {
 			dev_err(&dev->dev, "Port %d is not ready. "
@@ -895,14 +937,14 @@ int fsl_rio_setup(struct platform_device *dev)
 				kfree(port);
 				continue;
 			}
-			dev_info(&dev->dev, "Port %d restart success!\n", i);
+//			dev_info(&dev->dev, "Port %d restart success!\n", i);
 		}
 		fsl_rio_info(&dev->dev, ccsr);
 
 		port->sys_size = (in_be32((priv->regs_win + RIO_PEF_CAR))
 					& RIO_PEF_CTLS) >> 4;
-		dev_info(&dev->dev, "RapidIO Common Transport System size: %d\n",
-				port->sys_size ? 65536 : 256);
+//		dev_info(&dev->dev, "RapidIO Common Transport System size: %d\n",
+//				port->sys_size ? 65536 : 256);
 
 		if (rio_register_mport(port)) {
 			release_resource(&port->iores);

@@ -81,6 +81,13 @@ static int rionet_capable = 1;
 static struct rio_dev **rionet_active;
 static int nact;	/* total number of active rionet peers */
 
+/*housir: 用以获取自己的设备id */
+extern struct rio_mport *mem_mport;
+
+
+
+extern void test_nread(unsigned char * str);
+
 #define is_rionet_capable(src_ops, dst_ops)			\
 			((src_ops & RIO_SRC_OPS_DATA_MSG) &&	\
 			 (dst_ops & RIO_DST_OPS_DATA_MSG) &&	\
@@ -728,6 +735,11 @@ static ssize_t wan_write(struct file *file,const char __user *buf, size_t count,
 	
 	format_space(bin_content_ascii);
 
+    if(NULL != mem_mport)
+    {
+        printk("==>[%s] host_deviceid : [%d]\n", __func__, mem_mport->host_deviceid);
+    }
+
 	if(!memcmp(bin_content_ascii,"meminfo",sizeof("meminfo")-1))
 	{
 		test_mem();
@@ -778,6 +790,11 @@ static ssize_t wan_write(struct file *file,const char __user *buf, size_t count,
 		u32 length=sizeof("getmsg");
 		testInBoundGetMsg(&bin_content_ascii[length]);
 	}
+	else if(!memcmp(bin_content_ascii,"rioNread",sizeof("rioNread")-1))
+	{
+		u32 length=sizeof("rioNread");
+		test_nread(&bin_content_ascii[length]);
+	}
     return count;
 }
 static const struct file_operations wan_fops = {
@@ -792,7 +809,9 @@ static int __init wan_xjg_init()
 {
 	int err = 0;
 
-	printk("rick wan_wnc_init\n");
+    /*housir: modified by housir */
+//	printk("rick wan_wnc_init\n");
+	printk(KERN_INFO "rick wan_wnc_init\n");
 
 	wan_major = register_chrdev(0, "wan_major", &wan_fops);
 		if (!wan_major) {
@@ -817,7 +836,9 @@ out_chrdev:
 	printk("wan_wnc_init::register failure!!\n");
 	unregister_chrdev(wan_major, "wan_major");
 out:
-	printk("wan_wnc_init::register completed!!\n");
+    /*housir: modified by housir */
+//	printk("wan_wnc_init::register completed!!\n");
+	printk(KERN_INFO "wan_wnc_init::register completed!!\n");
 	return err;
 
 }
@@ -846,9 +867,7 @@ static int pci_test_probe (struct pci_dev *pdev, const struct pci_device_id *id)
 	int err;
 	int retval = -ENXIO;
 	unsigned long mem_addr, mem_len;
-	
-	printk("===> [%s]\n", __func__);
-	
+
 	err = pci_enable_device(pdev);
 	if (err) {
 		printk("can't enable pci test device %d\n", err);
@@ -872,8 +891,6 @@ static int pci_test_probe (struct pci_dev *pdev, const struct pci_device_id *id)
 		//return -EBUSY;
 	
 	set_rioinb((u32)mem_addr,0x40000000,(u32)mem_len,0);
-
-	printk("===> [%s]\n", __func__);
 	
 	return 0;
 out_disable_device:

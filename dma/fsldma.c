@@ -45,12 +45,27 @@
 
 static const char msg_ld_oom[] = "No free memory for link descriptor";
 
+/*added by housir*/
+#define lOCAL_DST_ATTRIB_SNOOP    0x0101         /* Read, snoop local processor  */
 /*
  * Register Helpers
  */
 /* BEGIN: Added by niefei, 2013/12/18   问题单号:新增rio_dma_nread_test函数 */
 static struct fsldma_device *rio_fdev;
 /* END:   Added by niefei, 2013/12/18 */
+/*housir:  初始化的时候获取，之后一直使用？*/
+static struct fsldma_chan *griodma_chan;
+
+static struct dma_async_tx_descriptor *
+fsl_dma_prep_memcpy(struct dma_chan *dchan,
+	dma_addr_t dma_dst, dma_addr_t dma_src,
+	size_t len, unsigned long flags);
+
+static void fsl_dma_memcpy_issue_pending(struct dma_chan *dchan);
+static enum dma_status fsl_tx_status(struct dma_chan *dchan,
+					dma_cookie_t cookie,
+					struct dma_tx_state *txstate);
+
 static void set_sr(struct fsldma_chan *chan, u32 val)
 {
 	DMA_OUT(chan, &chan->regs->sr, val, 32);
@@ -110,6 +125,7 @@ static dma_addr_t get_desc_src(struct fsldma_chan *chan,
 		? ((u64)FSL_DMA_SATR_SREADTYPE_SNOOP_READ << 32) : 0;
 	return DMA_TO_CPU(chan, desc->hw.src_addr, 64) & ~snoop_bits;
 }
+
 static void set_desc_dst(struct fsldma_chan *chan,
 			 struct fsl_dma_ld_hw *hw, dma_addr_t dst)
 {
@@ -159,10 +175,13 @@ static void set_ld_eol(struct fsldma_chan *chan, struct fsl_desc_sw *desc)
 static void dma_init(struct fsldma_chan *chan)
 {
 	/* Reset the channel */
-	DMA_OUT(chan, &chan->regs->mr, 0, 32);
+	DMA_OUT(chan, &chan->regs->mr, 0, 32);/*设置模式REG 为 0，32 为设置宽度*/
+
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] ===> chan->feature [0x%x]\n", chan->feature);
 
 	switch (chan->feature & FSL_DMA_IP_MASK) {
-	case FSL_DMA_IP_85XX:
+	case FSL_DMA_IP_85XX:/*设置Mode Registers*/
 		/* Set the channel to below modes:
 		 * EIE - Error interrupt enable
 		 * EOLNIE - End of links interrupt enable
@@ -471,6 +490,8 @@ static int fsl_dma_alloc_chan_resources(struct dma_chan *dchan)
 {
 	struct fsldma_chan *chan = to_fsl_chan(dchan);
 
+	//printk("[module fsl dma] ===> [%s]\n", __func__);
+
 	/* Has this channel already been allocated? */
 	if (chan->desc_pool)
 		return 1;
@@ -486,6 +507,8 @@ static int fsl_dma_alloc_chan_resources(struct dma_chan *dchan)
 		chan_err(chan, "unable to allocate descriptor pool\n");
 		return -ENOMEM;
 	}
+	
+	//printk("[module fsl dma] <=== [%s]\n", __func__);
 
 	/* there is at least one descriptor free to be allocated */
 	return 1;
@@ -534,6 +557,8 @@ static void fsl_dma_free_chan_resources(struct dma_chan *dchan)
 {
 	struct fsldma_chan *chan = to_fsl_chan(dchan);
 	unsigned long flags;
+	
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	chan_dbg(chan, "free all channel resources\n");
 	spin_lock_irqsave(&chan->desc_lock, flags);
@@ -543,6 +568,8 @@ static void fsl_dma_free_chan_resources(struct dma_chan *dchan)
 
 	dma_pool_destroy(chan->desc_pool);
 	chan->desc_pool = NULL;
+	
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 }
 
 static struct dma_async_tx_descriptor *
@@ -550,6 +577,8 @@ fsl_dma_prep_interrupt(struct dma_chan *dchan, unsigned long flags)
 {
 	struct fsldma_chan *chan;
 	struct fsl_desc_sw *new;
+
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	if (!dchan)
 		return NULL;
@@ -571,12 +600,16 @@ fsl_dma_prep_interrupt(struct dma_chan *dchan, unsigned long flags)
 	/* Set End-of-link to the last link descriptor of new list */
 	set_ld_eol(chan, new);
 
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
+
 	return &new->async_tx;
 }
 /* BEGIN: Added by niefei, 2013/12/16   问题单号:新增rio_dma_nread_test函数 */
 static void __devinit rio_dma_nread_callback(void *dma_async_param)
 {
 	struct completion *cmp = dma_async_param;
+
+    printk("===> [%s]\n", __func__);
 
 	complete(cmp);
 }
@@ -586,8 +619,19 @@ static void __devinit rio_dma_nread_callback(void *dma_async_param)
 作者:聂飞
 时间:2013-12-18
 **********************************************************************************/
-void rio_dma_nread(dma_addr_t stLoalAddr, dma_addr_t stRioAddr,
-	size_t len, unsigned long flags)
+
+/**
+ * @brief 
+ *
+ * @param localport
+ * @param destid   目标器件的设备id
+ * @param stLoalAddr
+ * @param stRioAddr
+ * @param bytecnt
+ *
+ * @return 
+ */
+int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRioAddr, u32 bytecnt)
 {
     int i;
     u8 *src;
@@ -601,7 +645,37 @@ void rio_dma_nread(dma_addr_t stLoalAddr, dma_addr_t stRioAddr,
     struct completion stDmacmp;
     unsigned long tmo;
     unsigned long flags;
+    unsigned long len = bytecnt;
 
+    u64 u64iVal=0;
+    u32 u32iVal=0;
+	unsigned int uiTimeOut = 0x100;
+
+    printk("===> [%s]\n", __func__);
+#if 0
+    union uiVal_64{
+        u64 Value,
+            struct u32{
+                u32 left,
+                u32 right,
+            };
+    };
+    u32 uiVal
+#endif
+    /*housir: 先向MODE写 0 再检查忙状态 */
+
+    out_be32(&(griodma_chan->regs->mr),0);    
+
+    while (uiTimeOut--)
+    {
+        u32iVal  = in_be32(&(griodma_chan->regs->sr));
+        if (0 == (u32iVal & DMA8641_SR_CB_BUSY))
+        {
+            break;
+        }
+        /*housir: 加个延时? */
+    }
+        /*housir: 顺序有问题么? 是不是应该放在reg设置完之后?*/
     /* Start copy, using first DMA channel */
     dma_chan = container_of(dma->channels.next, struct dma_chan,
                 device_node);
@@ -614,6 +688,44 @@ void rio_dma_nread(dma_addr_t stLoalAddr, dma_addr_t stRioAddr,
     flags = DMA_COMPL_SRC_UNMAP_SINGLE | DMA_COMPL_DEST_UNMAP_SINGLE |
         DMA_PREP_INTERRUPT;
     /*在下述函数中实现源/目的属性寄存器设置待完成?????*/
+
+
+  /*housir:  设置模式 EOSIE 中断使能*/
+    /*housir: Basic Chaining Modes */
+    u32iVal  = in_be32(&(griodma_chan->regs->mr));
+    u32iVal  = (MPC8641_DMA_BWC_DISABLE | MPC8641_DMA_DAHTS_DISABLE | MPC8641_DMA_SAHTS_DISABLE | DMA8641_MR_CTM_DIRECT) | (1 << 9);
+    out_be32(&(griodma_chan->regs->mr),u32iVal);    
+
+
+    u64iVal = in_be64(&(griodma_chan->regs->sar));
+    /*housir: 设置satr 不用设置 SAR??(已设置sar)*/
+    u64iVal = (((DMA8641_SATR_SBPATMU_BYPASS   | DMA8641_SATR_STFLOWLVL_HIGH  | DMA8641_SATR_STRANSIT_SRIO | DMA8641_SATR_SREADTTYPE_ATMU_NRD) | ((destid<<2) & (0xFF<<2)) )<<32) | (stRioAddr); 
+    out_be64(&(griodma_chan->regs->sar),u64iVal);
+
+    printk("housir:sar:0x%llx\n", u64iVal);
+
+    /*housir:  设置datr不用设置 DAR??(已设置dar)*/
+    u64iVal = in_be64(&(griodma_chan->regs->dar));
+    u64iVal =  (LOCAL_DST_ATTRIB_SNOOP<<32) | (stLoalAddr); 
+    out_be64(&(griodma_chan->regs->dar),u64iVal);
+
+    printk("housir:dar:0x%llx\n", u64iVal);
+
+  
+/*housir: 开始发送 ，写入再读出 _CS_STAR位被改变则发生错误?*/
+    u32iVal = u32iVal |DMA8641_MR_CS_START;
+    out_be32(&(griodma_chan->regs->mr),u32iVal);    
+    u32iVal  = in_be32(&(griodma_chan->regs->mr));
+    
+    if((u32iVal & DMA8641_MR_CS_START) != DMA8641_MR_CS_START)
+    {
+        printk("start DMA error!\n");
+    	return -1;
+    }
+    
+
+    printk("housir:mr:0x%x\n", u32iVal);
+	
     tx = fsl_dma_prep_memcpy(dma_chan, dma_dest, dma_src,
                           len, flags);
     if (!tx) {
@@ -642,13 +754,16 @@ void rio_dma_nread(dma_addr_t stLoalAddr, dma_addr_t stRioAddr,
         err = -ENODEV;
         goto free_resources;
     }
+
+    printk("<=== [%s]\n", __func__);
+
     free_resources:
         fsl_dma_free_chan_resources(dma_chan);
     out:
         return err;
 }
 
-
+EXPORT_SYMBOL(rio_dma_nread);
 /* END:   Added by niefei, 2013/12/16 */
 static struct dma_async_tx_descriptor *
 fsl_dma_prep_memcpy(struct dma_chan *dchan,
@@ -658,6 +773,8 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	struct fsldma_chan *chan;
 	struct fsl_desc_sw *first = NULL, *prev = NULL, *new;
 	size_t copy;
+
+	//printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	if (!dchan)
 		return NULL;
@@ -670,7 +787,6 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	do {
 
 		/* Allocate the link descriptor from DMA pool */
-        /*在调用该函数之前需要创建内存池*/
 		new = fsl_dma_alloc_descriptor(chan);
 		if (!new) {
 			chan_err(chan, "%s\n", msg_ld_oom);
@@ -678,7 +794,7 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 		}
 
 		copy = min(len, (size_t)FSL_DMA_BCR_MAX_CNT);
-		/*设置DMA传输计数，源地址，目的地址*/
+
 		set_desc_cnt(chan, &new->hw, copy);
 		set_desc_src(chan, &new->hw, dma_src);
 		set_desc_dst(chan, &new->hw, dma_dst);
@@ -706,6 +822,8 @@ fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	/* Set End-of-link to the last link descriptor of new list */
 	set_ld_eol(chan, new);
 
+	//printk("[module fsl dma] <=== [%s]\n", __func__);
+
 	return &first->async_tx;
 
 fail:
@@ -726,6 +844,8 @@ static struct dma_async_tx_descriptor *fsl_dma_prep_sg(struct dma_chan *dchan,
 	size_t dst_avail, src_avail;
 	dma_addr_t dst, src;
 	size_t len;
+
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	/* basic sanity checks */
 	if (dst_nents == 0 || src_nents == 0)
@@ -781,6 +901,8 @@ static struct dma_async_tx_descriptor *fsl_dma_prep_sg(struct dma_chan *dchan,
 		/* update metadata */
 		dst_avail -= len;
 		src_avail -= len;
+
+//		printk("[module fsl dma] <=== [%s]\n", __func__);
 
 fetch:
 		/* fetch the next dst scatterlist entry */
@@ -1045,10 +1167,14 @@ static void fsl_dma_memcpy_issue_pending(struct dma_chan *dchan)
 {
 	struct fsldma_chan *chan = to_fsl_chan(dchan);
 	unsigned long flags;
+	
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 
 	spin_lock_irqsave(&chan->desc_lock, flags);
 	fsl_chan_xfer_ld_queue(chan);
 	spin_unlock_irqrestore(&chan->desc_lock, flags);
+
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
 }
 
 /**
@@ -1078,6 +1204,8 @@ static irqreturn_t fsldma_chan_irq(int irq, void *data)
 {
 	struct fsldma_chan *chan = data;
 	u32 stat;
+
+    printk("===> [%s]\n", __func__);
 
 	/* save and clear the status register */
 	stat = get_sr(chan);
@@ -1138,6 +1266,9 @@ static irqreturn_t fsldma_chan_irq(int irq, void *data)
 	 */
 	tasklet_schedule(&chan->tasklet);
 	chan_dbg(chan, "irq: Exit\n");
+
+//    printk("===> [%s]\n", __func__);
+
 	return IRQ_HANDLED;
 }
 
@@ -1201,6 +1332,8 @@ static irqreturn_t fsldma_ctrl_irq(int irq, void *data)
 	unsigned int handled = 0;
 	u32 gsr, mask;
 	int i;
+
+    printk("===> [%s]\n", __func__);
 
 	gsr = (fdev->feature & FSL_DMA_BIG_ENDIAN) ? in_be32(fdev->regs)
 						   : in_le32(fdev->regs);
@@ -1315,7 +1448,8 @@ static int __devinit fsl_dma_chan_probe(struct fsldma_device *fdev,
 		err = -ENOMEM;
 		goto out_return;
 	}
-
+    /*housir: added by housir */
+    griodma_chan = chan;
 	/* ioremap registers for use */
 	chan->regs = of_iomap(node, 0);
 	if (!chan->regs) {
@@ -1410,6 +1544,8 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 	struct device_node *child;
 	int err;
 
+//	printk("[module fsl dma] ===> [%s]\n", __func__);
+	
 	fdev = kzalloc(sizeof(*fdev), GFP_KERNEL);
 	if (!fdev) {
 		dev_err(&op->dev, "No enough memory for 'priv'\n");
@@ -1436,7 +1572,6 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 	dma_cap_set(DMA_INTERRUPT, fdev->common.cap_mask);
 	dma_cap_set(DMA_SG, fdev->common.cap_mask);
 	dma_cap_set(DMA_SLAVE, fdev->common.cap_mask);
-    
 	fdev->common.device_alloc_chan_resources = fsl_dma_alloc_chan_resources;
 	fdev->common.device_free_chan_resources = fsl_dma_free_chan_resources;
 	fdev->common.device_prep_dma_interrupt = fsl_dma_prep_interrupt;

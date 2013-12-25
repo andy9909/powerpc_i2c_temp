@@ -32,9 +32,9 @@
 
 #include "fsl_rio.h"
 
-/*added by housir*/
-#define MEASURE_TIME   1
-
+/*housir: added by housir 用于主动测试时间 */
+//#define COM_MSG_DOORBELL_TIME
+//#define CLIENT_MSG_DOORBELL_TIME
 /* BEGIN: Added by niefei, 2013/12/6   问题单号:修改MSG发送流程 */
 extern void InboundRecvMsgPro(struct rio_mport *mport);
 /* END:   Added by niefei, 2013/12/6 */
@@ -110,48 +110,48 @@ extern void InboundRecvMsgPro(struct rio_mport *mport);
 #define DOORBELL_MESSAGE_SIZE	0x08
 
 struct rio_msg_regs {
-	u32 omr;/*The outbound message mode register*/
-	u32 osr;/*The outbound message status register*/
+	u32 omr;
+	u32 osr;
 	u32 pad1;
-	u32 odqdpar;/*The outbound message descriptor queue dequeue pointer address registers*/
+	u32 odqdpar;
 	u32 pad2;
-	u32 osar;/*The outbound message unit source address registers*/
-	u32 odpr;/*The destination port register*/
-	u32 odatr;/*The outbound message destination attributes register*/
-	u32 odcr;/*The outbound message double-word count register*/
+	u32 osar;
+	u32 odpr;
+	u32 odatr;
+	u32 odcr;
 	u32 pad3;
-	u32 odqepar;/*The outbound message descriptor queue enqueue pointer address registers*/
+	u32 odqepar;
 	u32 pad4[13];
-	u32 imr;/*inbound message mode register*/
-	u32 isr;/* inbound message status register*/
+	u32 imr;
+	u32 isr;
 	u32 pad5;
-	u32 ifqdpar;/* inbound message frame queue dequeue pointer address registers*/
+	u32 ifqdpar;
 	u32 pad6;
-	u32 ifqepar;/*inbound message frame queue enqueue pointer address registers*/
+	u32 ifqepar;
 };
 
 struct rio_dbell_regs {
-	u32 odmr;/*Outbound Doorbell Mode Register*/
-	u32 odsr;/*Outbound Doorbell Status Register*/
+	u32 odmr;
+	u32 odsr;
 	u32 pad1[4];
-	u32 oddpr;/*Outbound Doorbell Destination Port Register*/
-	u32 oddatr;/*Outbound Doorbell Destination Attributes Register*/
+	u32 oddpr;
+	u32 oddatr;
 	u32 pad2[3];
-	u32 odretcr;/*Outbound Doorbell Retry Error Threshold Configuration Register*/
+	u32 odretcr;
 	u32 pad3[12];
 	u32 dmr;
 	u32 dsr;
 	u32 pad4;
-	u32 dqdpar;/*The inbound doorbell queue dequeue pointer address registers*/
+	u32 dqdpar;
 	u32 pad5;
-	u32 dqepar;/*The doorbell queue enqueue pointeraddress registers */
+	u32 dqepar;
 };
 
 struct rio_pw_regs {
-	u32 pwmr;/*The port-write mode register */
-	u32 pwsr;/*The port-write status register*/
-	u32 epwqbar;/*The Extended port-write queue base address registers*/
-	u32 pwqbar;/*The port-write queue base address registers*/
+	u32 pwmr;
+	u32 pwsr;
+	u32 epwqbar;
+	u32 pwqbar;
 };
 
 
@@ -199,19 +199,14 @@ struct rio_dbell_msg {
 	u16 sid;
 	u16 info;
 };
-
+/*housir: 全部变量 */
 extern struct rio_mport *mem_mport;
-//struct timespec
-volatile unsigned long gtime_begin;
-//struct timespec 
-volatile unsigned long gtime_end;
 
-//volatile
-	struct timeval gtimev_begin;
-//volatile
-	struct timeval gtimev_end;
+#ifdef COM_MSG_DOORBELL_TIME 
 
+struct timeval gtbegin,gtend;
 
+#endif
 /**
  * fsl_rio_tx_handler - MPC85xx outbound message interrupt handler
  * @irq: Linux interrupt number
@@ -227,7 +222,7 @@ fsl_rio_tx_handler(int irq, void *dev_instance)
 	struct rio_mport *port = (struct rio_mport *)dev_instance;
 	struct fsl_rmu *rmu = GET_RMM_HANDLE(port);
 
-	printk("===> %s\n", __func__);
+//    printk("===>[%s]\n", __func__);
 
 	osr = in_be32(&rmu->msg_regs->osr);
 
@@ -256,10 +251,10 @@ fsl_rio_tx_handler(int irq, void *dev_instance)
 		out_be32(&rmu->msg_regs->osr, RIO_MSG_OSR_EOMI);
 	}
 
-	/*added by housir*/
-			do_gettimeofday(&gtimev_begin);
-			
-			printk("<=== %s\n", __func__);
+#ifdef COM_MSG_DOORBELL_TIME
+   do_gettimeofday(&gtbegin);
+#endif
+
 
 out:
 	return IRQ_HANDLED;
@@ -324,18 +319,7 @@ fsl_rio_rx_handler(int irq, void *dev_instance)
 	struct rio_mport *port = (struct rio_mport *)dev_instance;
 	struct fsl_rmu *rmu = GET_RMM_HANDLE(port);
 
-printk("===> %s\n", __func__);
-	
-#ifdef MEASURE_TIME /*测量时间时打开，回发指定的门铃由对方计算时间*/ 
-
-	//gtime_end = get_jiffies_64();//current_kernel_time();
-	//do_gettimeofday(&gtimev_end);
-
-	printk("time is %d(us)==> [%s]\n", (int)(gtimev_end.tv_usec - gtimev_begin.tv_usec), __func__);
-
-	//fsl_rio_doorbell_send(mem_mport,0,0x12,0xaa);
-
-#endif
+//    printk("housir : msg  rx_handler: deviceid id 0x%x\n",port->host_deviceid);
 
 	isr = in_be32(&rmu->msg_regs->isr);
 
@@ -344,11 +328,7 @@ printk("===> %s\n", __func__);
 		out_be32((void *)&rmu->msg_regs->isr, RIO_MSG_ISR_TE);
 		goto out;
 	}
-	
-#ifndef MEASURE_TIME
-	printk("disable interruput\n");
-#endif
-
+	//printk("disable interruput\n");
 	//out_be32((void *)&rmu->msg_regs->imr, in_be32(&rmu->msg_regs->isr) & 0xffffffbf);
 	/*end by niefei*/
     /* BEGIN: Added by niefei, 2013/12/5   问题单号:修改MSG接收流程 */
@@ -367,7 +347,7 @@ printk("===> %s\n", __func__);
 				-1);
 
 		/* Ack the queueing interrupt */
-		printk("rx_handle isr = 0x%x\n",isr);
+//		printk("rx_handle isr = 0x%x\n",isr);
 		out_be32(&rmu->msg_regs->isr, RIO_MSG_ISR_DIQI);
 		isr = in_be32(&rmu->msg_regs->isr);
 		while(in_be32(&rmu->msg_regs->isr) & RIO_MSG_ISR_DIQI)
@@ -375,10 +355,11 @@ printk("===> %s\n", __func__);
 			out_be32(&rmu->msg_regs->isr, RIO_MSG_ISR_DIQI);
 			printk("clear isr  fail = 0x%x\n",isr);
 		}
-		printk("clear isr  = 0x%x\n",isr);
+//		printk("clear isr  = 0x%x\n",isr);
 	}
-	
-	printk("<=== %s\n", __func__);
+#ifdef  CLIENT_MSG_DOORBELL_TIME
+        fsl_rio_doorbell_send(mem_mport, 0, 0x1, 0x4444);
+#endif
 #if 0	
 	/*
 	 * Configure inbound message unit:
@@ -414,21 +395,18 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 	int dsr;
 	struct fsl_rio_dbell *fsl_dbell = (struct fsl_rio_dbell *)dev_instance;
 	int i;
-
-	printk("===> %s\n", __func__);
-	
-#ifdef MEASURE_TIME /*测量时间时打开，回发指定的门铃由对方计算时间*/ 
-    /*add by housir  use to  measure time */
-	do_gettimeofday(&gtimev_end);
-
-	printk("time is %d(us)==> [%s]\n", (int )(gtimev_end.tv_usec - gtimev_begin.tv_usec), __func__);
-
-	//fsl_rio_doorbell_send(mem_mport,0,0x12,0x55);
-#endif
+    struct rio_dbell_msg *dmsg_1;
 
 	dsr = in_be32(&fsl_dbell->dbell_regs->dsr);
 
-	pr_info("niefei RIO: doorbell reception ok\n");
+#ifdef COM_MSG_DOORBELL_TIME
+   do_gettimeofday(&gtend);
+   printk("housir:gtend:[%ld] gtbegin:[%ld] timeout %ld us\n", (long)gtend.tv_usec, gtbegin.tv_usec, gtend.tv_usec - gtbegin.tv_usec);
+
+#endif
+
+
+//	pr_info("niefei RIO: doorbell reception ok\n");
 	if (dsr & DOORBELL_DSR_TE) {
 		pr_info("RIO: doorbell reception error\n");
 		out_be32(&fsl_dbell->dbell_regs->dsr, DOORBELL_DSR_TE);
@@ -440,6 +418,15 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 		out_be32(&fsl_dbell->dbell_regs->dsr, DOORBELL_DSR_QFI);
 	}
 
+		dmsg_1 = fsl_dbell->dbell_ring.virt +
+			(in_be32(&fsl_dbell->dbell_regs->dqdpar) & 0xfff);
+
+//		printk("time _RIO: processing doorbell,"
+//			" sid %2.2x tid %2.2x info %4.4x\n",
+//			dmsg_1->sid, dmsg_1->tid, dmsg_1->info);
+
+
+
 	/* XXX Need to check/dispatch until queue empty */
 	if (dsr & DOORBELL_DSR_DIQI) {
 		struct rio_dbell_msg *dmsg =
@@ -447,7 +434,7 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 			(in_be32(&fsl_dbell->dbell_regs->dqdpar) & 0xfff);
 		struct rio_dbell *dbell;
 		int found = 0;
-
+//        printk("1111111111111111111\n");
 		pr_debug
 			("RIO: processing doorbell,"
 			" sid %2.2x tid %2.2x info %4.4x\n",
@@ -485,8 +472,10 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 		setbits32(&fsl_dbell->dbell_regs->dmr, DOORBELL_DMR_DI);
 		out_be32(&fsl_dbell->dbell_regs->dsr, DOORBELL_DSR_DIQI);
 	}
-	
-	printk("<=== %s\n", __func__);
+
+#ifdef  CLIENT_MSG_DOORBELL_TIME
+        fsl_rio_doorbell_send(mem_mport, 0, dmsg_1->sid, 0x3333);
+#endif
 
 out:
 	return IRQ_HANDLED;
@@ -777,16 +766,13 @@ int fsl_rio_doorbell_send(struct rio_mport *mport,
  {
 	 unsigned int uiTimeOut = 0x100;
 	 u32 uiVal = 0;
-	 
-#ifndef MEASURE_TIME /*测量时间时打开，回发指定的门铃由对方计算时间*/ 
-	 printk("fsl_doorbell_send: index %d destid %4.4x data %4.4x\n",
-		  index, destid, data);
-#endif
+//	 printk("fsl_doorbell_send: index %d destid %4.4x data %4.4x\n",
+//		  index, destid, data);
  
 	 /* In the serial version silicons, such as MPC8548, MPC8641,
 	  * below operations is must be.
 	  */
-	 //printk("jg odsr 1 %x,%p\n", in_be32(&dbell->dbell_regs->odsr),&dbell->dbell_regs->odsr);
+//	 printk("jg odsr 1 %x,%p\n", in_be32(&dbell->dbell_regs->odsr),&dbell->dbell_regs->odsr);
 	 while(uiTimeOut--)
 	 {
 		 uiVal = in_be32(&dbell->dbell_regs->odsr);
@@ -799,7 +785,7 @@ int fsl_rio_doorbell_send(struct rio_mport *mport,
 		 }
 	 }
  
-	 //printk("jg uiTimeOut %x\n",uiTimeOut);
+//	 printk("jg uiTimeOut %x\n",uiTimeOut);
 		 
 	 out_be32(&dbell->dbell_regs->odmr, 0x00000000);
 	 //out_be32(&dbell->dbell_regs->odretcr, 0x00000004);
@@ -810,27 +796,19 @@ int fsl_rio_doorbell_send(struct rio_mport *mport,
 	 out_be32(&dbell->dbell_regs->oddatr,uiVal);
 			 
 	 uiVal = in_be32(&dbell->dbell_regs->oddatr);
-
-#ifdef MEASURE_TIME /*测量时间时打开，回发指定的门铃由对方计算时间*/ 
-	 printk("jg uiVal %x\n",uiVal);
-//#include "aaaaa.h"
-#endif
-
+//	 printk("jg uiVal %x\n",uiVal);
 	 uiVal |= data;
 	 out_be32(&dbell->dbell_regs->oddatr,uiVal);
 		 }
 	 //out_be32(&dbell->dbell_regs->oddatr,(index << 20) | data);
 	 out_be32(&dbell->dbell_regs->odmr, 0x00000001);
 
-	 /*added by housir */
-	 if (0x55 == data)
-	 {
-		 do_gettimeofday(&gtimev_begin);
-		//msleep(0);
-	 }
-	 
-	 //mdelay(50);//////////////////???????????????????????
-	 //printk("jg odsr 2 %x\n", in_be32(&dbell->dbell_regs->odsr));
+#ifdef COM_MSG_DOORBELL_TIME
+   do_gettimeofday(&gtbegin);
+#endif
+
+//	 mdelay(50);//////////////////???????????????????????
+//	 printk("jg odsr 2 %x\n", in_be32(&dbell->dbell_regs->odsr));
 	 return 0;
  }
 
@@ -995,12 +973,12 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 	 unsigned short usDestId = 0;
 	 static u32 uiOpenFlag = 0;
 
+	
 	 struct fsl_rmu *rmu = GET_RMM_HANDLE(mport);
 	 u32 omr;
 	 struct rio_tx_desc *desc = (struct rio_tx_desc *)rmu->msg_tx_ring.virt
 					 + rmu->msg_tx_ring.tx_slot;
 	 int ret = 0;
-	 printk("===> %s\n", __func__);
 	 
 	uMbox = v_uMbox;
 	usDestId = v_usDestId;
@@ -1014,27 +992,27 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 		return -1;
 	}
 	
-	 //printk("RIO: fsl_add_outb_message(): destid %4.4x mbox %d buffer " 
-	 // "%p len %8.8zx\n", usDestId, uMbox, buffer, uiSize);
-	 //pr_debug("RIO: fsl_add_outb_message(): destid %4.4x mbox %d buffer " 
-	//	  "%p len %8.8zx\n", usDestId, uMbox, buffer, uiSize);
+//	 printk("RIO: fsl_add_outb_message(): destid %4.4x mbox %d buffer " 
+//	  "%p len %8.8zx\n", usDestId, uMbox, buffer, uiSize);
+//	 pr_debug("RIO: fsl_add_outb_message(): destid %4.4x mbox %d buffer " 
+//		  "%p len %8.8zx\n", usDestId, uMbox, buffer, uiSize);
 	 if ((uiSize < 8) || (uiSize > RIO_MAX_MSG_SIZE)) {
 		 ret = -EINVAL;
 		 goto out;
 	 }
-	 uiOpenId = 0x12;
+/*housir:  	 uiOpenId = 0x12;*/
 	if(uiOpenFlag == 0)
 	{
 		fsl_open_outb_mbox(mport,(void *)&uiOpenId,0,1024);
 		uiOpenFlag = 1;
 	}
- 	//printk("virt_buffer = %p\n",rmu->msg_tx_ring.virt_buffer[rmu->msg_tx_ring.tx_slot]);
+// 	printk("virt_buffer = %p\n",rmu->msg_tx_ring.virt_buffer[rmu->msg_tx_ring.tx_slot]);
 
 	 /* Copy and clear rest of buffer */
 	 memset(buffer, 0x1,uiSize);
 	 memcpy(rmu->msg_tx_ring.virt_buffer[rmu->msg_tx_ring.tx_slot], buffer,
 			 uiSize);
-	 //printk("memcpy ok\n");
+//	 printk("memcpy ok\n");
 	 if (uiSize < (RIO_MAX_MSG_SIZE - 4))
 		 memset(rmu->msg_tx_ring.virt_buffer[rmu->msg_tx_ring.tx_slot]
 				 + uiSize, 0, RIO_MAX_MSG_SIZE - uiSize);
@@ -1052,12 +1030,12 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 	 desc->dwcnt = is_power_of_2(uiSize) ? uiSize : 1 << get_bitmask_order(uiSize);
  
 	 /* Set snooping and source buffer address */
-	 //printk("phy_buffer =%p",&rmu->msg_tx_ring.phys_buffer[rmu->msg_tx_ring.tx_slot]);
-	 desc->saddr = 0x00000004
-		 | rmu->msg_tx_ring.phys_buffer[rmu->msg_tx_ring.tx_slot];
+//	 printk("phy_buffer =%p",&rmu->msg_tx_ring.phys_buffer[rmu->msg_tx_ring.tx_slot]);
+//	 desc->saddr = 0x00000004
+//		 | rmu->msg_tx_ring.phys_buffer[rmu->msg_tx_ring.tx_slot];
 	 /* Increment enqueue pointer */
 	 omr = in_be32(&rmu->msg_regs->omr);
-	 //printk("omr reg =%p,value = 0x%x\n",&rmu->msg_regs->omr,omr);
+//	 printk("omr reg =%p,value = 0x%x\n",&rmu->msg_regs->omr,omr);
 	 out_be32(&rmu->msg_regs->omr, omr | RIO_MSG_OMR_MUI);
 /* BEGIN: Deleted by niefei, 2013/12/4   问题单号:修改MSG发送流程 */
     /*启动发送*/
@@ -1069,10 +1047,6 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 		 rmu->msg_tx_ring.tx_slot = 0;
 
 
-	 //	msleep(0);
-
-
-	 printk("<=== %s\n", __func__);
 	 #if 0
 	#endif
 	 out:
@@ -1114,12 +1088,13 @@ void InboundRecvMsgPro(struct rio_mport *mport)
 	}
     out1:
     pValue = (unsigned char *)rmu->msg_rx_ring.virt_buffer[buf_idx];
-    printk("recv msg  frist byte = 0x%x\n",pValue[0]);
+//    printk("recv msg  frist byte = 0x%x\n",pValue[0]);
 	/*当软件接收完一帧MSG后，更新IMR的MI bit位RAPIDIO硬件使得IMFQDPAR 增加*/
 	setbits32(&rmu->msg_regs->imr, RIO_MSG_IMR_MI);
-    printk("get message success ,before update IMR_MI,qdpar =0x%x,qepar=0x%x\n",in_be32(&rmu->msg_regs->ifqdpar),in_be32(&rmu->msg_regs->ifqepar));
+//    printk("get message success ,before update IMR_MI,qdpar =0x%x,qepar=0x%x\n",in_be32(&rmu->msg_regs->ifqdpar),in_be32(&rmu->msg_regs->ifqepar));
 	out2:
-	printk("rapiod user pro Msg buf here \n");
+    return;/*housir: added by housir */
+//	printk("rapiod user pro Msg buf here \n");
 }
 /*****************************************************************************
  func : endif
@@ -1159,7 +1134,7 @@ int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox)
 	if(uiOpenFlag == 0)
 	{
 		fsl_open_inb_mbox(mport,(void *)&uiOpenId,0,uiEntriesNum);
-		printk("inbound get msg init\n");
+//		printk("inbound get msg init\n");
         /* BEGIN: Added by niefei, 2013/12/4   问题单号:修改getMSG流程 */
         buf = (void *)kmalloc(RIO_MAX_MSG_SIZE * (uiEntriesNum +1),GFP_KERNEL);
         if(NULL == buf)
@@ -1170,7 +1145,7 @@ int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox)
         }
         while(rmu->msg_rx_ring.rx_slot < rmu->msg_rx_ring.size)
         {
-            printk("added buf for rmu->msg_rx_ring.rx_slot[%d]\n ",rmu->msg_rx_ring.rx_slot ); 
+//            printk("added buf for rmu->msg_rx_ring.rx_slot[%d]\n ",rmu->msg_rx_ring.rx_slot ); 
             fsl_add_inb_buffer(mport,0,(buf + rmu->msg_rx_ring.rx_slot * RIO_MAX_MSG_SIZE));
              
             if(0 == rmu->msg_rx_ring.rx_slot)
@@ -1206,13 +1181,13 @@ int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox)
 	/* Copy max message size, caller is expected to allocate that big */
 	memcpy(buf, buffer, RIO_MAX_MSG_SIZE);
 	pValue = (unsigned char *)buf;
-	printk("recv msg  addr = %p,pValue=0x%x\n",buf,pValue[0]);
+//	printk("recv msg  addr = %p,pValue=0x%x\n",buf,pValue[0]);
 	/* Clear the available buffer */
     /* BEGIN: Deleted by niefei, 2013/12/4   问题单号:修改getMSG流程 */
 	//rmu->msg_rx_ring.virt_buffer[buf_idx] = NULL;
     /* END: Deleted by niefei, 2013/12/4 */
 	out1:
-	printk("get message success,update IMR_MI\n");
+//	printk("get message success,update IMR_MI\n");
     /*当软件接收完一帧MSG后，更新IMR的MI bit位RAPIDIO硬件使得IMFQDPAR 增加*/
 	setbits32(&rmu->msg_regs->imr, RIO_MSG_IMR_MI);
     /* BEGIN: Deleted by niefei, 2013/12/4   问题单号:修改getMSG流程 */
@@ -1251,8 +1226,10 @@ fsl_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev, int mbox,
 					+ rmu->msg_tx_ring.tx_slot;
 	int ret = 0;
 
-	//pr_debug("RIO: fsl_add_outb_message(): destid %4.4x mbox %d buffer " 
-	//	 "%p len %8.8zx\n", rdev->destid, mbox, buffer, len);
+//    printk("===>[%s]\n", __func__);
+
+//	pr_debug("RIO: fsl_add_outb_message(): destid %4.4x mbox %d buffer " 
+//		 "%p len %8.8zx\n", rdev->destid, mbox, buffer, len);
 	if ((len < 8) || (len > RIO_MAX_MSG_SIZE)) {
 		ret = -EINVAL;
 		goto out;
@@ -1285,6 +1262,8 @@ fsl_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev, int mbox,
 	/* Go to next descriptor */
 	if (++rmu->msg_tx_ring.tx_slot == rmu->msg_tx_ring.size)
 		rmu->msg_tx_ring.tx_slot = 0;
+    
+
 
 out:
 	return ret;
@@ -1307,6 +1286,8 @@ fsl_open_outb_mbox(struct rio_mport *mport, void *dev_id, int mbox, int entries)
 	int i, j, rc = 0;
 	struct rio_priv *priv = mport->priv;
 	struct fsl_rmu *rmu = GET_RMM_HANDLE(mport);
+
+//    printk("===>[%s]\n", __func__);
 
 	if ((entries < RIO_MIN_TX_RING_SIZE) ||
 		(entries > RIO_MAX_TX_RING_SIZE) || (!is_power_of_2(entries))) {
@@ -1411,6 +1392,8 @@ void fsl_close_outb_mbox(struct rio_mport *mport, int mbox)
 	struct rio_priv *priv = mport->priv;
 	struct fsl_rmu *rmu = GET_RMM_HANDLE(mport);
 
+
+    printk("===>[%s]\n", __func__);
 	/* Disable inbound message unit */
 	out_be32(&rmu->msg_regs->omr, 0);
 
