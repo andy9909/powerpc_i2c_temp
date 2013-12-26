@@ -342,6 +342,37 @@ void test_nread(unsigned char * str)
 	
 }
 
+void test_nwrite(unsigned char * str)
+{
+	u32 destid,localport,localaddr,rioaddr,bytecnt, iRv;
+	unsigned char *p=str;
+	u32 len;
+
+	printk("housir test_nread %s\n",str);
+
+	p=strsep((char**)&str,(char*)" ");
+	localport=str2hex(p);
+
+	p=strsep((char**)&str,(char*)" ");
+	destid=str2hex(p);
+
+	p=strsep((char**)&str,(char*)" ");
+	localaddr=str2hex(p);
+
+	p=strsep((char**)&str,(char*)" ");
+	rioaddr=str2hex(p);
+
+
+
+	len=strlen(str);
+	str[len-1]='\0';
+	bytecnt = str2hex(str);
+
+	iRv = rio_dma_nwrite(0, destid, localaddr, rioaddr, bytecnt);
+	
+	printk("==>[%s]:irv = 0x%x\n", __func__, iRv);
+	
+}
 
 void test_riooutb(unsigned char * str) //localaddr rioaddr size destid window(1~6)
 {

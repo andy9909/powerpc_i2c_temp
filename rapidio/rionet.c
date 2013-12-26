@@ -87,6 +87,8 @@ extern struct rio_mport *mem_mport;
 
 
 extern void test_nread(unsigned char * str);
+extern void test_nwrite(unsigned char * str);
+
 
 #define is_rionet_capable(src_ops, dst_ops)			\
 			((src_ops & RIO_SRC_OPS_DATA_MSG) &&	\
@@ -794,6 +796,11 @@ static ssize_t wan_write(struct file *file,const char __user *buf, size_t count,
 	{
 		u32 length=sizeof("rioNread");
 		test_nread(&bin_content_ascii[length]);
+	}
+	else if(!memcmp(bin_content_ascii,"rioWrite",sizeof("rioWrite")-1))
+	{
+		u32 length=sizeof("rioWrite");
+		test_nwrite(&bin_content_ascii[length]);
 	}
     return count;
 }

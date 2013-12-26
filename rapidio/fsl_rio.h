@@ -137,5 +137,6 @@ extern int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v
 /*added by housir dma read/write*/
 extern int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRioAddr, u32 bytecnt);
 
+extern int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRioAddr, u32 bytecnt);
 
 #endif
