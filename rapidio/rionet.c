@@ -723,6 +723,85 @@ static void test_rapidio(void)
 	printk("jg test_rapidio\n");
 	disc_rio();
 }
+/*housir: added by housir 内联的不能extern? */
+static unsigned char str2hexnum(unsigned char c)
+{
+	if(c >= '0' && c <= '9')
+		return c - '0';
+	if(c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	if(c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	return 0; /* foo */
+}
+static inline unsigned long str2hex(unsigned char *str)
+{
+	int value = 0;
+	while (*str) {
+		value = value << 4;
+		value |= str2hexnum(*str++);
+	}
+
+	return value;
+}
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  display
+ *  Description:  显示指定地址的值
+ * =====================================================================================
+ */
+static  void dm (unsigned char *str)
+{
+    u32 addr,size,len;
+	unsigned char *p=str;
+	volatile unsigned char *src=NULL;   
+    u32 i;
+
+    printk("housir dm %s\n",str);
+
+	
+	p=strsep((char**)&str,(char*)" ");
+	addr=str2hex(p);
+
+//	p=strsep((char**)&str,(char*)" ");
+//	size=str2hex(p);
+
+	if(str=='\0')
+	{
+		printk("housir argument error!\n");
+		return;
+	}
+
+	len=strlen(str);
+	str[len-1]='\0';
+	
+    size = str2hex(str);
+
+    src = (unsigned char *)ioremap(addr, size);
+
+    if (NULL == src)
+    {
+        printk("==>[%s] remap error\n", __func__);
+        return;
+    }
+
+    /*housir: display addr */
+    for (i=0;i<size;i++)
+    {
+        if (i%16 == 0)
+        {
+            printk("\n0x%4.4x:    ", addr+i);
+        }
+        printk("0x%x ", *(src+i));
+    }
+    printk("\n");
+
+    iounmap(src);
+    
+    return ;
+}		/* -----  end of static function display  ----- */
 
 static ssize_t wan_write(struct file *file,const char __user *buf, size_t count, loff_t *ppos)
 {
@@ -801,6 +880,11 @@ static ssize_t wan_write(struct file *file,const char __user *buf, size_t count,
 	{
 		u32 length=sizeof("rioWrite");
 		test_nwrite(&bin_content_ascii[length]);
+	}
+    else if(!memcmp(bin_content_ascii,"dm",sizeof("dm")-1))
+	{
+		u32 length=sizeof("dm");
+		dm(&bin_content_ascii[length]);
 	}
     return count;
 }
