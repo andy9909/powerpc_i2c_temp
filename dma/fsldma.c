@@ -146,6 +146,13 @@ static dma_addr_t get_desc_dst(struct fsldma_chan *chan,
 	return DMA_TO_CPU(chan, desc->hw.dst_addr, 64) & ~snoop_bits;
 }
 
+/**
+ * @brief 将next加入到hw中的next_ln_addr
+ *
+ * @param chan
+ * @param hw
+ * @param next
+ */
 static void set_desc_next(struct fsldma_chan *chan,
 			  struct fsl_dma_ld_hw *hw, dma_addr_t next)
 {
@@ -156,6 +163,12 @@ static void set_desc_next(struct fsldma_chan *chan,
 	hw->next_ln_addr = CPU_TO_DMA(chan, snoop_bits | next, 64);
 }
 
+/**
+ * @brief 设置end of links
+ *
+ * @param chan
+ * @param desc
+ */
 static void set_ld_eol(struct fsldma_chan *chan, struct fsl_desc_sw *desc)
 {
 	u64 snoop_bits;
@@ -201,6 +214,13 @@ static void dma_init(struct fsldma_chan *chan)
 	}
 }
 
+/**
+ * @brief 是否是复位状态
+ *
+ * @param chan
+ *
+ * @return 
+ */
 static int dma_is_idle(struct fsldma_chan *chan)
 {
 	u32 sr = get_sr(chan);
@@ -239,6 +259,11 @@ static void dma_start(struct fsldma_chan *chan)
 	DMA_OUT(chan, &chan->regs->mr, mode, 32);
 }
 
+/**
+ * @brief 暂停
+ *
+ * @param chan
+ */
 static void dma_halt(struct fsldma_chan *chan)
 {
 	u32 mode;
@@ -398,6 +423,12 @@ static void fsl_chan_toggle_ext_start(struct fsldma_chan *chan, int enable)
 		chan->feature &= ~FSL_DMA_CHAN_START_EXT;
 }
 
+/**
+ * @brief desc加入到 chan
+ *
+ * @param chan
+ * @param desc desc
+ */
 static void append_ld_queue(struct fsldma_chan *chan, struct fsl_desc_sw *desc)
 {
 	struct fsl_desc_sw *tail = to_fsl_desc(chan->ld_pending.prev);
@@ -943,6 +974,17 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
 
 EXPORT_SYMBOL(rio_dma_nwrite);
 
+/**
+ * @brief  构造LLI
+ *
+ * @param dchan: Handle to the DMA channel allocated for the operation 
+ * @param dma_dst: Physical address of the destination buffer 
+ * @param dma_src: Physical address of the source buffer 
+ * @param len: Number of bytes to copy 
+ * @param flags: control flags as defined by enum dma_ctrl_flags 
+ *
+ * @return: Handle to the transaction descriptor allocated for the transfer  
+ */
 static struct dma_async_tx_descriptor *
 fsl_dma_prep_memcpy(struct dma_chan *dchan,
 	dma_addr_t dma_dst, dma_addr_t dma_src,
@@ -1238,6 +1280,7 @@ static void fsldma_cleanup_descriptor(struct fsldma_chan *chan,
 	u32 len = get_desc_cnt(chan, desc);
 
 	/* Run the link descriptor callback function */
+    /*housir: mark */
 	if (txd->callback) {
 #ifdef FSL_DMA_LD_DEBUG
 		chan_dbg(chan, "LD %p callback\n", desc);
@@ -1746,7 +1789,7 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 
 	/* map the channel IRQ if it exists, but don't hookup the handler yet */
 	fdev->irq = irq_of_parse_and_map(op->dev.of_node, 0);
-    /*设置DMA的功能属性*/
+    /*设置DMA的功能属性,设置 DMA_MEMCPY,... 掩码*/
 	dma_cap_set(DMA_MEMCPY, fdev->common.cap_mask);
 	dma_cap_set(DMA_INTERRUPT, fdev->common.cap_mask);
 	dma_cap_set(DMA_SG, fdev->common.cap_mask);
@@ -1762,8 +1805,10 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 	fdev->common.device_control = fsl_dma_device_control;
 	fdev->common.dev = &op->dev;
 
+    /*housir: 通知内核设置DMA寻址限制 */
 	dma_set_mask(&(op->dev), DMA_BIT_MASK(36));
 
+    /*housir: 设备结构体fdev放入内核设备结构op->dev中 */
 	dev_set_drvdata(&op->dev, fdev);
 
 	/*
@@ -1799,7 +1844,7 @@ static int __devinit fsldma_of_probe(struct platform_device *op)
 		dev_err(fdev->dev, "unable to request IRQs\n");
 		goto out_free_fdev;
 	}
-
+/*housir: 将这个DMA驱动，注册到DMA Engine 框架中 */
 	dma_async_device_register(&fdev->common);
     /* BEGIN: Added by niefei, 2013/12/18   问题单号:新增rio_dma_nread_test函数 */
     rio_fdev = fdev;
@@ -1819,6 +1864,7 @@ static int fsldma_of_remove(struct platform_device *op)
 	unsigned int i;
 
 	fdev = dev_get_drvdata(&op->dev);
+/*housir: 将这个DMA驱动，从dma引擎中注销 */
 	dma_async_device_unregister(&fdev->common);
 
 	fsldma_free_irqs(fdev);
