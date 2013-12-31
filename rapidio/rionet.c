@@ -48,6 +48,10 @@ MODULE_LICENSE("GPL");
 #define RIONET_TX_RING_SIZE	CONFIG_RIONET_TX_SIZE
 #define RIONET_RX_RING_SIZE	CONFIG_RIONET_RX_SIZE
 
+
+#define do_dm(str) (__do_dm(str))/*显示指定内存值*/
+
+
 static LIST_HEAD(rionet_peers);
 
 struct rionet_private {
@@ -723,7 +727,7 @@ static void test_rapidio(void)
 	printk("jg test_rapidio\n");
 	disc_rio();
 }
-/*housir: added by housir 内联的不能extern? */
+/*housir: added by housir 内联的不能extern */
 static unsigned char str2hexnum(unsigned char c)
 {
 	if(c >= '0' && c <= '9')
@@ -746,15 +750,16 @@ static inline unsigned long str2hex(unsigned char *str)
 }
 
 
+
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  display
  *  Description:  显示指定地址的值
  * =====================================================================================
  */
-static  void dm (unsigned char *str)
+static  void __do_dm (unsigned char *str)
 {
-    u32 addr,size,len;
+    u32 addr,size,len,is_remap=0;
 	unsigned char *p=str;
 	volatile unsigned char *src=NULL;   
     u32 i;
@@ -765,8 +770,8 @@ static  void dm (unsigned char *str)
 	p=strsep((char**)&str,(char*)" ");
 	addr=str2hex(p);
 
-//	p=strsep((char**)&str,(char*)" ");
-//	size=str2hex(p);
+	p=strsep((char**)&str,(char*)" ");
+	size=str2hex(p);
 
 	if(str=='\0')
 	{
@@ -777,10 +782,17 @@ static  void dm (unsigned char *str)
 	len=strlen(str);
 	str[len-1]='\0';
 	
-    size = str2hex(str);
+    is_remap = str2hex(str);
 
-    src = (unsigned char *)ioremap(addr, size);
-
+	
+	if(1 == is_remap)
+	{
+    	src = (unsigned char *)ioremap(addr, size);
+	}
+	else
+	{
+		src = 1;
+	}
     if (NULL == src)
     {
         printk("==>[%s] remap error\n", __func__);
@@ -794,11 +806,16 @@ static  void dm (unsigned char *str)
         {
             printk("\n0x%4.4x:    ", addr+i);
         }
-        printk("0x%x ", *(src+i));
+		
+		if(1 == is_remap)
+        	printk("0x%x ", *(src+i));
+		else
+        	printk("0x%x ", *(unsigned char*)(addr+i));
     }
     printk("\n");
-
-    iounmap(src);
+	
+	if(1 == is_remap)
+    	iounmap(src);
     
     return ;
 }		/* -----  end of static function display  ----- */
@@ -884,7 +901,7 @@ static ssize_t wan_write(struct file *file,const char __user *buf, size_t count,
     else if(!memcmp(bin_content_ascii,"dm",sizeof("dm")-1))
 	{
 		u32 length=sizeof("dm");
-		dm(&bin_content_ascii[length]);
+		do_dm(&bin_content_ascii[length]);
 	}
     return count;
 }

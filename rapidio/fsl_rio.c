@@ -452,14 +452,18 @@ void test_memory_map(void)
 void read_memory_map(void)
 {
 	u32 i;
+#if 0  /*added by housir*/
 	struct rio_priv *priv = mem_mport->priv;
+#endif
 	u32 round = TEST_SIZE >> 12;
-	//test_m=(u32*)(0xc0000000+0x400000);
+	test_m=(u32*)(0xc0000000+0x400000);
 	for(i=0;i<round;i++)
 		{
-	    printk("%x %p\n",*((u32*)(priv->maint_win+0x400000)+i),(u32*)(priv->maint_win+0x400000)+i);
-	    //*((u32*)(priv->maint_win+0x400000)+i) = 0x0;
-	  //   printk("%x %p\n",*((u32*)test_m+i),(u32*)test_m+i);
+#if 0  /*added by housir*/
+	    	//printk("%x %p\n",*((u32*)(priv->maint_win+0x400000)+i),(u32*)(priv->maint_win+0x400000)+i);
+#endif
+		//*((u32*)(priv->maint_win+0x400000)+i) = 0x0;
+	  	   printk("%x %p\n",*((u32*)test_m+i),(u32*)test_m+i);
 	   //  *((u32*)test_m+i) = 0;
 		}
 }
