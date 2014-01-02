@@ -225,7 +225,14 @@ static u32 rioMapInb(struct rio_mport *mport, u32 localAddr, u32 srioAddr, u32 s
 void set_riooutb(u32 localAddr, u32 srioAddr, u32 size,
                   u32 dstID,u32 uiOub)
 {
+#if 0
 	if(uiOub<1 || uiOub>6)
+		{
+		printk("jg window error\n");
+		return;
+		}
+#endif
+		if(uiOub<0 || uiOub>6)
 		{
 		printk("jg window error\n");
 		return;

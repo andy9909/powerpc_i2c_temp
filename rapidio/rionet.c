@@ -903,6 +903,11 @@ static ssize_t wan_write(struct file *file,const char __user *buf, size_t count,
 		u32 length=sizeof("dm");
 		do_dm(&bin_content_ascii[length]);
 	}
+	else if(!memcmp(bin_content_ascii,"dm",sizeof("dm")-1))
+	{
+		u32 length=sizeof("dm");
+		do_dm(&bin_content_ascii[length]);
+	}
     return count;
 }
 static const struct file_operations wan_fops = {
