@@ -238,19 +238,25 @@
 typedef u64 __bitwise v64;
 typedef u32 __bitwise v32;
 
+/**
+ * @brief link descriptor hardwware
+ */
 struct fsl_dma_ld_hw {
 	v64 src_addr;/*包含源地址和源地址属性寄存器*/
 	v64 dst_addr;/*u64包含目的地址和目的地址属性寄存器*/
-	v64 next_ln_addr;
+	v64 next_ln_addr;/*housir: next link descriptor address registers */
 	v32 count;
 	v32 reserve;
 } __attribute__((aligned(32)));
 
+/**
+ * @brief software descriptor
+ */
 struct fsl_desc_sw {
 	struct fsl_dma_ld_hw hw;
 	struct list_head node;
 	struct list_head tx_list;
-	struct dma_async_tx_descriptor async_tx;
+	struct dma_async_tx_descriptor async_tx;/*housir:  */
 } __attribute__((aligned(32)));
 
 struct fsldma_chan_regs {
@@ -288,12 +294,12 @@ struct fsldma_device {
 
 struct fsldma_chan {
 	char name[8];			/* Channel name */
-	struct fsldma_chan_regs __iomem *regs;
+	struct fsldma_chan_regs __iomem *regs;/*housir: 加了 __iomem就表示，可映射后可以直接访问？ */
 	spinlock_t desc_lock;		/* Descriptor operation lock */
 	struct list_head ld_pending;	/* Link descriptors queue */
 	struct list_head ld_running;	/* Link descriptors queue */
 	struct dma_chan common;		/* DMA common channel */
-	struct dma_pool *desc_pool;	/* Descriptors pool */
+	struct dma_pool *desc_pool;	/* Descriptors pool   dma内存池，用于存放之后，每次驱动的LLI*/
 	struct device *dev;		/* Channel device */
 	int irq;			/* Channel IRQ */
 	int id;				/* Raw id of this channel */
