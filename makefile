@@ -4,6 +4,13 @@ uImage:
 	-@$(ECHO)  -e "\033[41;32m  Building uImage ...   \033[0m"
 	$(MAKE) -C $(KDIR) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) uImage 
 
+uboot:
+	-@$(ECHO)  -e "\033[41;32m  Building u-boot ...   \033[0m"
+	$(MAKE) -C $(UBOOTDIR) sbc8548_config
+	#ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE)  sbc8548_config
+	$(MAKE) -C $(UBOOTDIR) 
+	#ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE)
+
 all:
 		for d in $(SUBDIRS); do [ -d $$d ] && $(MAKE) -C $$d; done
 
@@ -37,8 +44,15 @@ purge_bmc:
 purge_dma:
 	$(MAKE) -C i2c clean
 purge_rapidio:
-	$(MAKE) -C i2c clean
+	$(MAKE) -C i2c clean 
 
+purge_uboot:
+	-@$(ECHO)  -e "\033[41;32m  Cleaning uboot ...   \033[0m"
+	$(MAKE) -C $(UBOOTDIR) distclean
+
+purge_uImage:
+	-@$(ECHO)  -e "\033[41;32m  Cleaning uImage ...   \033[0m"
+	$(MAKE) -C $(KDIR) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) clean
 ##################
 #####INSTALL######
 ##################

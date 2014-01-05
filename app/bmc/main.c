@@ -31,7 +31,7 @@
 
 void main()
 {
-#define SIZE 4096*250*4
+#define SIZE 4096*100
 #define LOOP_TIMES 250
         char *p1;
 	char *q = 0;
