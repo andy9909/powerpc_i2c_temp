@@ -769,6 +769,7 @@ static  void __do_dm (unsigned char *str)
 	
 	p=strsep((char**)&str,(char*)" ");
 	addr=str2hex(p);
+	printk("addr %x\n", addr);
 
 	p=strsep((char**)&str,(char*)" ");
 	size=str2hex(p);
@@ -810,7 +811,11 @@ static  void __do_dm (unsigned char *str)
 		if(1 == is_remap)
         	printk("0x%x ", *(src+i));
 		else
-        	printk("0x%x ", *(unsigned char*)(addr+i));
+		{
+			//printk("addr %x phys %x\n", addr,virt_to_phys(addr + i));
+			printk("0x%x ", *(unsigned char*)(addr+i));
+		}
+        	
     }
     printk("\n");
 	
@@ -903,7 +908,7 @@ static ssize_t wan_write(struct file *file,const char __user *buf, size_t count,
 		u32 length=sizeof("dm");
 		do_dm(&bin_content_ascii[length]);
 	}
-	else if(!memcmp(bin_content_ascii,"dm",sizeof("dm")-1))
+	else if(!memcmp(bin_content_ascii,"*",sizeof("*")-1))
 	{
 		u32 length=sizeof("dm");
 		do_dm(&bin_content_ascii[length]);

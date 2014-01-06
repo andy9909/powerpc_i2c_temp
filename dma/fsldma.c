@@ -56,7 +56,8 @@ static struct fsldma_device *rio_fdev;
 /*housir:  初始化的时候获取，之后一直使用？*/
 static struct fsldma_chan *griodma_chan;
 /*housir: rapidio的本地地址 ，用以本地显示*/
-unsigned char *plocaladdr=NULL;
+static unsigned char *pnreadlocaladdr=NULL;
+static unsigned char *pnwritelocaladdr=NULL;
 u32 rapidlen=0;
 
 static struct dma_async_tx_descriptor *
@@ -247,22 +248,22 @@ static void dma_start(struct fsldma_chan *chan)
 
 	if (chan->feature & FSL_DMA_CHAN_PAUSE_EXT)
 		{
-    printk("===>[11111]\n");
+   // printk("===>[11111]\n");
 		/*初始化传输计数寄存器为0*/
 		DMA_OUT(chan, &chan->regs->bcr, 0, 32);
 		mode |= FSL_DMA_MR_EMP_EN;
 	} else {
-    printk("===>[22222]\n");
+   // printk("===>[22222]\n");
 		mode &= ~FSL_DMA_MR_EMP_EN;
 	}
 
 	if (chan->feature & FSL_DMA_CHAN_START_EXT) {
 		mode |= FSL_DMA_MR_EMS_EN;
-    printk("===>[33333]\n");
+   // printk("===>[33333]\n");
 	} else {
 		mode &= ~FSL_DMA_MR_EMS_EN;
 		mode |= FSL_DMA_MR_CS;
-    printk("===>[44444]\n");
+    //printk("===>[44444]\n");
 	}
 
 	DMA_OUT(chan, &chan->regs->mr, mode, 32);
@@ -679,7 +680,7 @@ static void __devinit rio_dma_nread_callback(void *dma_async_param)
     printk("===> [%s]\n", __func__);
 
 	complete(cmp);
-    __print_m(plocaladdr, rapidlen);
+    __print_m(pnreadlocaladdr, rapidlen);
 }
 
 
@@ -696,8 +697,8 @@ static void __devinit rio_dma_nread_callback(void *dma_async_param)
  *
  * @param localport
  * @param destid   目标器件的设备id
- * @param stLoalAddr read操作的dst
- * @param stRioAddr read操作的src
+ * @param stLoalAddr read操作的dst (物理地址)
+ * @param stRioAddr read操作的src (物理地址)
  * @param bytecnt
  *
  * @return 
@@ -738,18 +739,19 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
 		return -1;
 	}
 
-    plocaladdr = kmalloc(bytecnt, GFP_KERNEL);
+    printk("housir:griodma_chan :0x%x\n", griodma_chan);
+    pnreadlocaladdr = kmalloc(bytecnt+1, GFP_KERNEL);
 
-    memset(plocaladdr, 0, bytecnt);
+    memset(pnreadlocaladdr, 0, bytecnt);
 
-    if(NULL == plocaladdr)
+    if(NULL == pnreadlocaladdr)
     {
         printk("==>[%s]:kmalloc error!\n", __func__);
         return -1;
     }
     else
     {
-        dma_dest = plocaladdr;
+        dma_dest = pnreadlocaladdr;
     }
 
     /*housir: 先向MODE写 0 再检查忙状态 */
@@ -776,6 +778,7 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
         err = -ENODEV;
         goto out;
     }
+//	chan_err(chan, "this is nread\n");
 
     flags = DMA_COMPL_SRC_UNMAP_SINGLE | DMA_COMPL_DEST_UNMAP_SINGLE |
         DMA_PREP_INTERRUPT;
@@ -785,12 +788,13 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
   /*housir:  设置模式 EOSIE 中断使能*/
     /*housir: Basic Chaining Modes */
     u32iVal  = in_be32(&(griodma_chan->regs->mr));
-    u32iVal  = (MPC8641_DMA_BWC_DISABLE | MPC8641_DMA_DAHTS_DISABLE | MPC8641_DMA_SAHTS_DISABLE | DMA8641_MR_CTM_DIRECT) | (1 << 9);
+    u32iVal  = (/*housir:  MPC8641_DMA_BWC_DISABLE */FSL_DMA_MR_BWC | MPC8641_DMA_DAHTS_DISABLE | MPC8641_DMA_SAHTS_DISABLE | DMA8641_MR_CTM_DIRECT) | (FSL_DMA_MR_EOSIE);
     out_be32(&(griodma_chan->regs->mr),u32iVal);    
-
+#if 0
     u32iVal  = in_be32(&(griodma_chan->regs->sr));
     u32iVal  |= FSL_DMA_SR_TE;
     out_be32(&(griodma_chan->regs->sr),u32iVal);
+#endif
     u32iVal  = in_be32(&(griodma_chan->regs->sr));
     printk("housir:sr:0x%x\n", u32iVal);
 
@@ -803,7 +807,7 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
 
     /*housir:  设置datr不用设置 DAR??(已设置dar)*/
     u64iVal = in_be64(&(griodma_chan->regs->dar));
-    u64iVal =  (((long long)LOCAL_DST_ATTRIB_SNOOP)<<32) | (dma_dest); 
+    u64iVal =  (((long long)LOCAL_DST_ATTRIB_SNOOP)<<32) | virt_to_phys(dma_dest); 
     out_be64(&(griodma_chan->regs->dar),u64iVal);
 
     printk("housir:dar:0x%llx\n", u64iVal);
@@ -813,20 +817,9 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
     printk("housir:bytecnt:0x%x\n", bytecnt);
 
   
-/*housir: 开始发送 ，写入再读出 _CS_STAR位被改变则发生错误?*/
-    u32iVal  = in_be32(&(griodma_chan->regs->mr));
-    u32iVal = u32iVal |DMA8641_MR_CS_START;
-    out_be32(&(griodma_chan->regs->mr),u32iVal);    
-    u32iVal  = in_be32(&(griodma_chan->regs->mr));
+
     
-    if((u32iVal & DMA8641_MR_CS_START) != DMA8641_MR_CS_START)
-    {
-        printk("start DMA error!\n");
-    	return -1;
-    }
-
-
-    printk("housir:mr:0x%x\n", u32iVal);
+ 
 
 	
 	
@@ -850,6 +843,21 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
     }
     fsl_dma_memcpy_issue_pending(dma_chan);
 
+    /*housir: 开始发送 ，写入再读出 _CS_STAR位被改变则发生错误?*/
+    u32iVal  = in_be32(&(griodma_chan->regs->mr));
+    u32iVal = u32iVal |DMA8641_MR_CS_START;
+    out_be32(&(griodma_chan->regs->mr),u32iVal);    
+    u32iVal  = in_be32(&(griodma_chan->regs->mr));
+    if((u32iVal & DMA8641_MR_CS_START) != DMA8641_MR_CS_START)
+    {
+        printk("start DMA error!\n");
+    	return -1;
+    }
+
+
+    printk("housir:mr:0x%x\n", u32iVal);
+    printk("housir:griodma_chan :0x%x\n", griodma_chan);
+
     tmo = wait_for_completion_timeout(&stDmacmp, msecs_to_jiffies(10000));
 
     if (tmo == 0 || fsl_tx_status(dma_chan, cookie, NULL)!= DMA_SUCCESS) 
@@ -859,9 +867,11 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
         goto free_resources;
     }
 
+    printk("housir:griodma_chan :0x%x\n", griodma_chan);
     printk("<=== [%s]\n", __func__);
 
     free_resources:
+        kfree(pnreadlocaladdr);
         fsl_dma_free_chan_resources(dma_chan);
     out:
         return err;
@@ -886,11 +896,11 @@ static void __devinit rio_dma_nwrite_callback(void *dma_async_param)
 }
 /*housir: added by housir dma 写操作 */
 /**
- * @brief 
+ * @brief 完成rapidio dma 操作，实现本地内存dma写到RioAddr空间数据
  *
  * @param localport
  * @param destid
- * @param stLoalAddr  写操作的src
+ * @param stLoalAddr  写操作的src(物理地址：将本地的一块内存写入到外面共享的rapidio)
  * @param stRioAddr 写操作的dst
  * @param bytecnt  写的大小
  *
@@ -929,7 +939,18 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
 	    printk("the size is more than 64M\n");
 		return -1;
 	}
-    
+    rapidlen = bytecnt;
+    pnwritelocaladdr = kmalloc(bytecnt, GFP_KERNEL);
+    memset(pnwritelocaladdr, 0, bytecnt);  
+    if(NULL == pnwritelocaladdr)
+    {
+        printk("==>[%s]:kmalloc error!\n", __func__);
+        return -1;
+    }
+    else
+    {
+        dma_src = pnwritelocaladdr;
+    }
 
     /*housir: 先向MODE写 0 再检查忙状态 */
 
@@ -944,15 +965,17 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
         }
         /*housir: 加个延时? */
     }
+    printk("uiTimeOut : 0x%x\n", uiTimeOut);
         /*housir: 顺序有问题么? 是不是应该放在reg设置完之后?*/
     /* Start copy, using first DMA channel */
     dma_chan = container_of(dma->channels.next, struct dma_chan,
                 device_node);
     if (fsl_dma_alloc_chan_resources(dma_chan) < 1) {
-        printk("rio_dma nread cannot allocate chan resource\n");
+        printk("rio_dma nwrite cannot allocate chan resource\n");
         err = -ENODEV;
         goto out;
     }
+//	chan_err(chan, "this is nwrite\n");
 
     flags = DMA_COMPL_SRC_UNMAP_SINGLE | DMA_COMPL_DEST_UNMAP_SINGLE |
         DMA_PREP_INTERRUPT;
@@ -962,20 +985,20 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
   /*housir:  设置模式 EOSIE 中断使能*/
     /*housir: Basic Chaining Modes */
     u32iVal  = in_be32(&(griodma_chan->regs->mr));
-    u32iVal  = (MPC8641_DMA_BWC_DISABLE | MPC8641_DMA_DAHTS_DISABLE | MPC8641_DMA_SAHTS_DISABLE | DMA8641_MR_CTM_DIRECT) | (1 << 9);
+    u32iVal  = (/*housir:  MPC8641_DMA_BWC_DISABLE */FSL_DMA_MR_BWC| MPC8641_DMA_DAHTS_DISABLE | MPC8641_DMA_SAHTS_DISABLE | DMA8641_MR_CTM_DIRECT) | (FSL_DMA_MR_EOSIE);
     out_be32(&(griodma_chan->regs->mr),u32iVal);    
 
 
     u64iVal = in_be64(&(griodma_chan->regs->sar));
     /*housir: 设置satr 不用设置 SAR??(已设置sar)*/
-    u64iVal = (((DMA8641_SATR_SBPATMU_BYPASS   | DMA8641_SATR_STFLOWLVL_HIGH  | DMA8641_SATR_STRANSIT_SRIO | DMA8641_SATR_SREADTTYPE_ATMU_NRD) | ((destid<<2) & (0xFF<<2)) )<<32) | (dma_src); 
+    u64iVal = ((long long)(DMA8641_SATR_SREADTTYPE_RD_SNOOP) <<32) | virt_to_phys(dma_src); 
     out_be64(&(griodma_chan->regs->sar),u64iVal);
 
     printk("housir:sar:0x%llx\n", u64iVal);
 
     /*housir:  设置datr不用设置 DAR??(已设置dar)*/
     u64iVal = in_be64(&(griodma_chan->regs->dar));
-    u64iVal =  (LOCAL_DST_ATTRIB_SNOOP<<32) | (dma_dest); 
+    u64iVal =  ((long long)(RAPIDIO_DST_ATTRIB|((destid<<2) & (0xFF<<2)) )<<32) | (dma_dest); 
     out_be64(&(griodma_chan->regs->dar),u64iVal);
 
     printk("housir:dar:0x%llx\n", u64iVal);
@@ -1003,7 +1026,7 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
     tx = fsl_dma_prep_memcpy(dma_chan, dma_dest, dma_src,
                           len, flags);
     if (!tx) {
-        printk("rio_dma nread prep failed, disabling\n");
+        printk("rio_dma nwrite prep failed, disabling\n");
         err = -ENODEV;
         goto free_resources;
     }
@@ -1020,7 +1043,7 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
     }
     fsl_dma_memcpy_issue_pending(dma_chan);
 
-    tmo = wait_for_completion_timeout(&stDmacmp, msecs_to_jiffies(3000));
+    tmo = wait_for_completion_timeout(&stDmacmp, msecs_to_jiffies(10000));
 
     if (tmo == 0 || fsl_tx_status(dma_chan, cookie, NULL)!= DMA_SUCCESS) 
    {
@@ -1032,6 +1055,7 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
     printk("<=== [%s]\n", __func__);
 
     free_resources:
+        kfree(pnwritelocaladdr);
         fsl_dma_free_chan_resources(dma_chan);
     out:
         return err;
@@ -1499,6 +1523,8 @@ static irqreturn_t fsldma_chan_irq(int irq, void *data)
 	stat = get_sr(chan);
 	set_sr(chan, stat);
 	chan_dbg(chan, "irq: stat = 0x%x\n", stat);
+	chan_err(chan, "irq: stat = 0x%x\n", stat);
+    printk("housir:griodma_chan :0x%x\n", griodma_chan);
 
 	/* check that this was really our device */
 	stat &= ~(FSL_DMA_SR_CB | FSL_DMA_SR_CH);

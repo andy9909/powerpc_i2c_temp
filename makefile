@@ -38,13 +38,13 @@ rapidio:
 purge_i2c:
 	$(MAKE) -C i2c clean
 purge_fpga:
-	$(MAKE) -C i2c clean
+	$(MAKE) -C fpga clean
 purge_bmc:
-	$(MAKE) -C i2c clean
+	$(MAKE) -C app/bmc clean
 purge_dma:
-	$(MAKE) -C i2c clean
+	$(MAKE) -C dma clean
 purge_rapidio:
-	$(MAKE) -C i2c clean 
+	$(MAKE) -C rapidio clean
 
 purge_uboot:
 	-@$(ECHO)  -e "\033[41;32m  Cleaning uboot ...   \033[0m"
