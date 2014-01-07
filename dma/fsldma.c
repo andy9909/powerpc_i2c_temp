@@ -697,7 +697,7 @@ static void __devinit rio_dma_nread_callback(void *dma_async_param)
  *
  * @param localport
  * @param destid   目标器件的设备id
- * @param stLoalAddr read操作的dst (物理地址)
+ * @param stLoalAddr read操作的dst (物理地址)最后给dma的须是总线地址
  * @param stRioAddr read操作的src (物理地址)
  * @param bytecnt
  *
@@ -740,7 +740,7 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
 	}
 
     printk("housir:griodma_chan :0x%x\n", griodma_chan);
-    pnreadlocaladdr = kmalloc(bytecnt+1, GFP_KERNEL);
+    pnreadlocaladdr = kmalloc(bytecnt, GFP_KERNEL);
 
     memset(pnreadlocaladdr, 0, bytecnt);
 
@@ -780,8 +780,7 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
     }
 //	chan_err(chan, "this is nread\n");
 
-    flags = DMA_COMPL_SRC_UNMAP_SINGLE | DMA_COMPL_DEST_UNMAP_SINGLE |
-        DMA_PREP_INTERRUPT;
+    flags = /*housir:  DMA_COMPL_SRC_UNMAP_SINGLE | DMA_COMPL_DEST_UNMAP_SINGLE |*/DMA_CTRL_ACK /*housir:  | DMA_COMPL_SKIP_SRC_UNMAP */| DMA_COMPL_DEST_UNMAP_SINGLE | DMA_PREP_INTERRUPT;
     /*在下述函数中实现源/目的属性寄存器设置待完成?????*/
 
 
@@ -817,7 +816,12 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
     printk("housir:bytecnt:0x%x\n", bytecnt);
 
   
+//    printk("phys:dest==>0x%x,src==>0x%x\n", virt_to_phys(dma_dest), dma_src);
+//	dma_dest = dma_map_single(griodma_chan->dev, buf, bytecnt,
+//	下面一句很重要
+	dma_dest = dma_map_single(griodma_chan->dev, pnreadlocaladdr, bytecnt, DMA_FROM_DEVICE);
 
+//    printk("phys:dest==>0x%x,dma_map dest==>0x%x,src==>0x%x\n",  virt_to_phys(dma_dest), dma_dest, dma_src);
     
  
 
@@ -831,7 +835,8 @@ int rio_dma_nread(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRio
         goto free_resources;
     }
 
-    async_tx_ack(tx);
+    /*housir:  flags中已经设置*/
+//    async_tx_ack(tx);
     init_completion(&stDmacmp);
     tx->callback = rio_dma_nread_callback;
     tx->callback_param = &stDmacmp;
@@ -977,8 +982,8 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
     }
 //	chan_err(chan, "this is nwrite\n");
 
-    flags = DMA_COMPL_SRC_UNMAP_SINGLE | DMA_COMPL_DEST_UNMAP_SINGLE |
-        DMA_PREP_INTERRUPT;
+    flags = DMA_COMPL_SRC_UNMAP_SINGLE |/*housir:  | DMA_COMPL_DEST_UNMAP_SINGLE |*/
+        DMA_CTRL_ACK | DMA_PREP_INTERRUPT;
     /*在下述函数中实现源/目的属性寄存器设置待完成?????*/
 
 
@@ -1006,6 +1011,9 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
     /*housir: 设置dma传送的个数最大2^26-1  64M BCR */
     out_be32(&(griodma_chan->regs->bcr),bytecnt);    
 
+    //	下面一句很重要
+	dma_src = dma_map_single(griodma_chan->dev, pnwritelocaladdr, bytecnt, DMA_TO_DEVICE);
+
   
 /*housir: 开始发送 ，写入再读出 _CS_STAR位被改变则发生错误?*/
     u32iVal = u32iVal |DMA8641_MR_CS_START;
@@ -1031,7 +1039,7 @@ int rio_dma_nwrite(unsigned char localport, u16 destid, u32 stLoalAddr, u32 stRi
         goto free_resources;
     }
 
-    async_tx_ack(tx);
+//    async_tx_ack(tx);
     init_completion(&stDmacmp);
     tx->callback = rio_dma_nwrite_callback;
     tx->callback_param = &stDmacmp;
