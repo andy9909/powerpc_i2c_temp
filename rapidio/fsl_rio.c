@@ -319,9 +319,17 @@ void test_doorbell(unsigned char * str)
 /**/
 void test_nread(unsigned char * str)
 {
-	u32 destid,localport,localaddr,rioaddr,bytecnt, iRv;
+	u32 destid,localport,rioaddr,bytecnt, iRv;
 	unsigned char *p=str;
 	u32 len;
+	char *localaddr=NULL;
+	
+#define COM_NREADWRITE_TIME	
+#ifdef COM_NREADWRITE_TIME 
+
+	static struct timeval gtbegin,gtend;
+
+#endif
 
 	printk("housir test_nread %s\n",str);
 
@@ -331,8 +339,10 @@ void test_nread(unsigned char * str)
 	p=strsep((char**)&str,(char*)" ");
 	destid=str2hex(p);
 
+#if 0
 	p=strsep((char**)&str,(char*)" ");
 	localaddr=str2hex(p);
+#endif
 
 	p=strsep((char**)&str,(char*)" ");
 	rioaddr=str2hex(p);
@@ -342,18 +352,46 @@ void test_nread(unsigned char * str)
 	len=strlen(str);
 	str[len-1]='\0';
 	bytecnt = str2hex(str);
-
-	iRv = rio_dma_nread(0, destid, localaddr, rioaddr, bytecnt);
 	
+    localaddr = kmalloc(bytecnt, GFP_KERNEL);
+	if (NULL == localaddr)
+	{
+		printk("==>[%s]kmalloc error\n", __func__);
+		return ;
+	}
+
+    memset(localaddr, 0, bytecnt);
+	/*计时开始*/
+	
+#ifdef COM_NREADWRITE_TIME 	
+	do_gettimeofday(&gtbegin);
+#endif
+	iRv = rio_dma_nread(destid&0xff, (u32)localaddr, rioaddr, bytecnt);
+	
+	/*计时结束*/
+#ifdef COM_NREADWRITE_TIME 	
+	do_gettimeofday(&gtend);
+	printk("housir:gtend:[%ld] gtbegin:[%ld] timeout %ld us speed %ld Mb/s\n", (long)gtend.tv_usec, gtbegin.tv_usec,
+		gtend.tv_usec - gtbegin.tv_usec, (100000/(gtend.tv_usec - gtbegin.tv_usec))*bytecnt/1024/1024);
+#endif	
+
 	printk("==>[%s]:irv = 0x%x\n", __func__, iRv);
+	return;
 	
 }
 
 void test_nwrite(unsigned char * str)
 {
-	u32 destid,localport,localaddr,rioaddr,bytecnt, iRv;
+	u32 destid,localport,rioaddr,bytecnt, iRv;
 	unsigned char *p=str;
 	u32 len;
+	char *localaddr=NULL;
+	
+#ifdef COM_NREADWRITE_TIME 
+	
+		static struct timeval gtbegin,gtend;
+	
+#endif
 
 	printk("housir test_nread %s\n",str);
 
@@ -362,22 +400,42 @@ void test_nwrite(unsigned char * str)
 
 	p=strsep((char**)&str,(char*)" ");
 	destid=str2hex(p);
-
+#if 0
 	p=strsep((char**)&str,(char*)" ");
 	localaddr=str2hex(p);
-
+#endif
 	p=strsep((char**)&str,(char*)" ");
 	rioaddr=str2hex(p);
-
-
 
 	len=strlen(str);
 	str[len-1]='\0';
 	bytecnt = str2hex(str);
-
-	iRv = rio_dma_nwrite(0, destid, localaddr, rioaddr, bytecnt);
 	
+    localaddr = kmalloc(bytecnt, GFP_KERNEL);
+	if (NULL == localaddr)
+	{
+		printk("==>[%s]kmalloc error\n", __func__);
+		return ;
+	}
+	/*向rapidio 中写入0x1*/
+    memset(localaddr, 0x1, bytecnt);
+
+	/*计时开始*/
+#ifdef COM_NREADWRITE_TIME 	
+		do_gettimeofday(&gtbegin);
+#endif
+
+	iRv = rio_dma_nwrite(destid&0xff, (u32)localaddr, rioaddr, bytecnt);
+		
+	/*计时结束*/
+#ifdef COM_NREADWRITE_TIME 	
+	do_gettimeofday(&gtend);
+	printk("housir:gtend:[%ld] gtbegin:[%ld] timeout %ld us speed %ld Mb/s\n", (long)gtend.tv_usec, gtbegin.tv_usec,
+			gtend.tv_usec - gtbegin.tv_usec, (100000/(gtend.tv_usec - gtbegin.tv_usec))*bytecnt/1024/1024);
+#endif	
+
 	printk("==>[%s]:irv = 0x%x\n", __func__, iRv);
+	return;
 	
 }
 

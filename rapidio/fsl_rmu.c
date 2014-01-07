@@ -204,7 +204,7 @@ extern struct rio_mport *mem_mport;
 
 #ifdef COM_MSG_DOORBELL_TIME 
 
-struct timeval gtbegin,gtend;
+static struct timeval gtbegin,gtend;
 
 #endif
 /**
