@@ -374,6 +374,7 @@ void test_nread(unsigned char * str)
 	printk("housir:gtend:[%ld] gtbegin:[%ld] timeout %ld us speed %ld Mb/s\n", (long)gtend.tv_usec, gtbegin.tv_usec,
 		gtend.tv_usec - gtbegin.tv_usec, (100000/(gtend.tv_usec - gtbegin.tv_usec))*bytecnt/1024/1024);
 #endif	
+	kfree(localaddr);
 
 	printk("==>[%s]:irv = 0x%x\n", __func__, iRv);
 	return;
@@ -433,6 +434,7 @@ void test_nwrite(unsigned char * str)
 	printk("housir:gtend:[%ld] gtbegin:[%ld] timeout %ld us speed %ld Mb/s\n", (long)gtend.tv_usec, gtbegin.tv_usec,
 			gtend.tv_usec - gtbegin.tv_usec, (100000/(gtend.tv_usec - gtbegin.tv_usec))*bytecnt/1024/1024);
 #endif	
+	kfree(localaddr);
 
 	printk("==>[%s]:irv = 0x%x\n", __func__, iRv);
 	return;

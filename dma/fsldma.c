@@ -38,6 +38,8 @@
 #include "dmaengine.h"
 #include "fsldma.h"
 
+#define RAPIDIO_DMA_DEBUG
+
 #define chan_dbg(chan, fmt, arg...)					\
 	dev_dbg(chan->dev, "%s: " fmt, chan->name, ##arg)
 #define chan_err(chan, fmt, arg...)					\
@@ -903,9 +905,9 @@ static void __devinit rio_dma_nwrite_callback(void *dma_async_param)
  * @brief 完成rapidio dma 操作，实现本地内存dma写到RioAddr空间数据
  *
  * @param destid    目标器件的设备id
- * @param loalAddr  写操作的src(物理地址：将本地的一块内存写入到外面共享的rapidio)
+ * @param loalAddr  写操作的src
  * @param rioAddr   写操作的dst
- * @param bytecnt   写的大小
+ * @param bytecnt   dma传输的字节数
  *
  * @return 
  */
@@ -1526,8 +1528,8 @@ static irqreturn_t fsldma_chan_irq(int irq, void *data)
 	stat = get_sr(chan);
 	set_sr(chan, stat);
 	chan_dbg(chan, "irq: stat = 0x%x\n", stat);
-	chan_err(chan, "irq: stat = 0x%x\n", stat);
-    printk("housir:griodma_chan :0x%x\n", griodma_chan);
+//	chan_err(chan, "irq: stat = 0x%x\n", stat);
+//    printk("housir:griodma_chan :0x%x\n", griodma_chan);
 
 	/* check that this was really our device */
 	stat &= ~(FSL_DMA_SR_CB | FSL_DMA_SR_CH);
