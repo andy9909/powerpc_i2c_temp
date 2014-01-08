@@ -749,6 +749,30 @@ static inline unsigned long str2hex(unsigned char *str)
 	return value;
 }
 
+/**
+ * @brief 获取本地DevicedId
+ *
+ * @return 设备id
+ */
+#define   LOCALDEVICEIDADDR             0xe00c0060    /*  Base device ID command and status register (BDIDCSR)*/
+u16 rioGetLocalDeviceId(void)
+{
+	volatile unsigned char *vlocalidaddr=NULL;  
+    u16 deviceid=0;
+
+    vlocalidaddr = (unsigned char *)ioremap(LOCALDEVICEIDADDR, 4);
+    if (NULL == vlocalidaddr)
+    {
+        printk("===> [%s] ioremap error\n", __func__);
+        return -1;
+    }
+    deviceid = *(unsigned short *)(vlocalidaddr);
+    iounmap(vlocalidaddr);
+
+    printk("deviceid is 0x%x\n", deviceid);
+
+    return  deviceid;
+}
 
 
 /* 
@@ -913,6 +937,12 @@ static ssize_t wan_write(struct file *file,const char __user *buf, size_t count,
 		u32 length=sizeof("dm");
 		do_dm(&bin_content_ascii[length]);
 	}
+	else if(!memcmp(bin_content_ascii,"rioGetLocalDeviceId",sizeof("rioGetLocalDeviceId")-1))
+	{
+		u32 length=sizeof("rioGetLocalDeviceId");
+		rioGetLocalDeviceId();
+	}
+	
     return count;
 }
 static const struct file_operations wan_fops = {

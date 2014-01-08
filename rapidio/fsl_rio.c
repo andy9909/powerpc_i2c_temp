@@ -222,6 +222,15 @@ static u32 rioMapInb(struct rio_mport *mport, u32 localAddr, u32 srioAddr, u32 s
 
     return 1;
 }
+/**
+ * @brief    设置将共享的rapidio接口地址映射到本地地址，以便可以在本地直接操作该段地址
+ *
+ * @param localAddr   映射完后的本地地址
+ * @param srioAddr    要映射的rapidio接口
+ * @param size        要映射的大小
+ * @param dstID       要映射设备的设备id
+ * @param uiOub       映射使用的窗口号
+ */
 void set_riooutb(u32 localAddr, u32 srioAddr, u32 size,
                   u32 dstID,u32 uiOub)
 {
@@ -239,6 +248,14 @@ void set_riooutb(u32 localAddr, u32 srioAddr, u32 size,
 		}
 	rioMapOutb(mem_mport,localAddr,srioAddr,size,dstID,0,uiOub);
 }
+/**
+ * @brief 设置共享指定大小的rapidio地址
+ *
+ * @param localAddr 共享的本地rapidio地址
+ * @param srioAddr  对外的rapidio接口地址
+ * @param size      共享的大小
+ * @param uiInb     使用的窗口号
+ */
 void set_rioinb(u32 localAddr, u32 srioAddr, u32 size,
                   u32 uiInb)
 {
@@ -372,7 +389,7 @@ void test_nread(unsigned char * str)
 #ifdef COM_NREADWRITE_TIME 	
 	do_gettimeofday(&gtend);
 	printk("housir:gtend:[%ld] gtbegin:[%ld] timeout %ld us speed %ld Mb/s\n", (long)gtend.tv_usec, gtbegin.tv_usec,
-		gtend.tv_usec - gtbegin.tv_usec, (100000/(gtend.tv_usec - gtbegin.tv_usec))*bytecnt/1024/1024);
+		gtend.tv_usec - gtbegin.tv_usec, (1000000/(gtend.tv_usec - gtbegin.tv_usec))*bytecnt/(1024*1024));
 #endif	
 	kfree(localaddr);
 
@@ -380,6 +397,7 @@ void test_nread(unsigned char * str)
 	return;
 	
 }
+
 
 void test_nwrite(unsigned char * str)
 {
@@ -432,7 +450,7 @@ void test_nwrite(unsigned char * str)
 #ifdef COM_NREADWRITE_TIME 	
 	do_gettimeofday(&gtend);
 	printk("housir:gtend:[%ld] gtbegin:[%ld] timeout %ld us speed %ld Mb/s\n", (long)gtend.tv_usec, gtbegin.tv_usec,
-			gtend.tv_usec - gtbegin.tv_usec, (100000/(gtend.tv_usec - gtbegin.tv_usec))*bytecnt/1024/1024);
+			gtend.tv_usec - gtbegin.tv_usec, (1000000/(gtend.tv_usec - gtbegin.tv_usec))*bytecnt/(1024*1024));
 #endif	
 	kfree(localaddr);
 

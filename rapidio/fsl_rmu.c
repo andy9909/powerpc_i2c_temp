@@ -812,6 +812,25 @@ int fsl_rio_doorbell_send(struct rio_mport *mport,
 	 return 0;
  }
 
+/**
+ * @brief           向目标id发送一个门铃
+ *
+ * @param vdestid   RapidIO的接口设备ID
+ * @param vdata     16位的消息内容
+ *
+ * @return          成功返回0，不成功返回非0
+ */
+int rio_doorbell_send(u16 vdestid, u16 vdata)
+{
+	u16 destid,data;
+
+    destid = vdestid;
+    data = vdata;
+#if defined(SBC_8548)
+	return (fsl_rio_doorbell_send(mem_mport,0,destid,data));
+#endif
+}
+
 #if 0
  /*Niefei*/
   static irqreturn_t
@@ -1052,6 +1071,22 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 	 out:
 	 return ret;
  }
+/**
+ * @brief              向指定id 邮箱发送指定大小的msg
+ *
+ * @param usDestId    目标ID
+ * @param uMbox       邮箱号
+ * @param buffer      指向本地消息地址的指针
+ * @param uiSize      消息长度，以字节为单位，只能在8~4096之间，2的幂次方
+ *
+ * @return    0:返回成功  22:参数错误         
+ */
+int rio_msg_send(unsigned short usDestId,u32 uMbox,void *buffer,u32 uiSize)
+{
+#if defined(SBC_8548)
+	return (OutBoundSendMsg(mem_mport,usDestId,uMbox,buffer,uiSize));
+#endif
+}
 /*****************************************************************************
  func : InboundMsgPro
  description : RapidIO接收message 处理

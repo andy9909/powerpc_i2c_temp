@@ -38,7 +38,8 @@
 #include "dmaengine.h"
 #include "fsldma.h"
 
-#define RAPIDIO_DMA_DEBUG
+/*added by housir 调试模式，打开大多数回显*/
+//#define RAPIDIO_DMA_DEBUG               
 
 #define chan_dbg(chan, fmt, arg...)					\
 	dev_dbg(chan->dev, "%s: " fmt, chan->name, ##arg)
@@ -246,7 +247,7 @@ static void dma_start(struct fsldma_chan *chan)
 {
 	u32 mode;
 
-    printk("===>[%s]\n", __func__);
+ //   printk("===>[%s]\n", __func__);
 
 	mode = DMA_IN(chan, &chan->regs->mr, 32);
 
@@ -645,7 +646,7 @@ fsl_dma_prep_interrupt(struct dma_chan *dchan, unsigned long flags)
 	/* Set End-of-link to the last link descriptor of new list */
 	set_ld_eol(chan, new);
 
-//	printk("[module fsl dma] ===> [%s]\n", __func__);
+//	printk("[module fsl dma] <=== [%s]\n", __func__);
 
 	return &new->async_tx;
 }
@@ -691,27 +692,7 @@ static void __devinit rio_dma_nread_callback(void *dma_async_param)
 
 
 
-/**********************************************************************************
-函数名:rio_dma_nread
-用途:完成rapidio dma 操作，实现将RioAddr空间数据DMA到本地内存
-作者:聂飞
-时间:2013-12-18
-**********************************************************************************/
-
-/**
- * @brief 完成rapidio dma 操作，实现从RioAddr空间读取数据到本地内存
- * Preconditions: stLoalAddr
- * -已设置setoutb  stRioAddr为设置对应的本地rapidio地址
- * -已存在一块空闲的内存地址stLoalAddr作为dma的dst
- *
- * @param destid    目标器件的设备id                                                          
- * @param LoalAddr  read操作的dst 
- * @param RioAddr   read操作的src 
- * @param bytecnt   dma传输的字节数
- *
- * @return 成功返回0 
- */
-int rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, const u32 bytecnt)
+int fsl_rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, const u32 bytecnt)
 {
     struct dma_device *dma = &rio_fdev->common;
     struct dma_chan *dma_chan;
@@ -884,7 +865,36 @@ int rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, const 
         return err;
 }
 
+
+/**********************************************************************************
+函数名:rio_dma_nread
+用途:完成rapidio dma 操作，实现将RioAddr空间数据DMA到本地内存
+作者:聂飞
+时间:2013-12-18
+**********************************************************************************/
+
+/**
+ * @brief 完成rapidio dma 操作，实现从RioAddr空间读取数据到本地内存
+ * Preconditions: stLoalAddr
+ * -已设置setoutb  stRioAddr为设置对应的本地rapidio地址
+ * -已存在一块空闲的内存地址stLoalAddr作为dma的dst
+ *
+ * @param destid    目标器件的设备id                                                          
+ * @param LoalAddr  read操作的dst 
+ * @param RioAddr   read操作的src 
+ * @param bytecnt   dma传输的字节数
+ *
+ * @return 成功返回0 
+ */
+int rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, const u32 bytecnt)
+{
+#if defined(SBC_8548)
+    return fsl_rio_dma_nread(destid, (u32)loalAddr, rioAddr, bytecnt);
+#endif
+}
 EXPORT_SYMBOL(rio_dma_nread);
+
+
 /* END:   Added by niefei, 2013/12/16 */
 /**
  * @brief 
@@ -901,17 +911,10 @@ static void __devinit rio_dma_nwrite_callback(void *dma_async_param)
 #endif
     complete(cmp);
 }
-/**
- * @brief 完成rapidio dma 操作，实现本地内存dma写到RioAddr空间数据
- *
- * @param destid    目标器件的设备id
- * @param loalAddr  写操作的src
- * @param rioAddr   写操作的dst
- * @param bytecnt   dma传输的字节数
- *
- * @return 
- */
-int rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, u32 bytecnt)
+
+
+
+int fsl_rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, u32 bytecnt)
 {
     struct dma_device *dma = &rio_fdev->common;
     struct dma_chan *dma_chan;
@@ -1064,6 +1067,24 @@ int rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, u32 b
         fsl_dma_free_chan_resources(dma_chan);
     out:
         return err;
+}
+
+
+/**
+ * @brief 完成rapidio dma 操作，实现本地内存dma写到RioAddr空间数据
+ *
+ * @param destid    目标器件的设备id
+ * @param loalAddr  写操作的src
+ * @param rioAddr   写操作的dst
+ * @param bytecnt   dma传输的字节数
+ *
+ * @return 
+ */
+int rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, const u32 bytecnt)
+{
+#if defined(SBC_8548)
+    return fsl_rio_dma_nwrite(destid, (u32)loalAddr, rioAddr, bytecnt);
+#endif
 }
 
 EXPORT_SYMBOL(rio_dma_nwrite);
@@ -1418,7 +1439,7 @@ static void fsl_chan_xfer_ld_queue(struct fsldma_chan *chan)
 {
 	struct fsl_desc_sw *desc;
 
-    printk("===>[%s]\n", __func__);
+ //   printk("===>[%s]\n", __func__);
 
 	/*
 	 * If the list of pending descriptors is empty, then we
@@ -1522,12 +1543,12 @@ static irqreturn_t fsldma_chan_irq(int irq, void *data)
 	struct fsldma_chan *chan = data;
 	u32 stat;
 
-    printk("===> [%s]\n", __func__);
+ //   printk("===> [%s]\n", __func__);
 
 	/* save and clear the status register */
 	stat = get_sr(chan);
 	set_sr(chan, stat);
-	chan_dbg(chan, "irq: stat = 0x%x\n", stat);
+//	chan_dbg(chan, "irq: stat = 0x%x\n", stat);
 //	chan_err(chan, "irq: stat = 0x%x\n", stat);
 //    printk("housir:griodma_chan :0x%x\n", griodma_chan);
 
@@ -1652,7 +1673,7 @@ static irqreturn_t fsldma_ctrl_irq(int irq, void *data)
 	u32 gsr, mask;
 	int i;
 
-    printk("===> [%s]\n", __func__);
+//    printk("===> [%s]\n", __func__);
 
 	gsr = (fdev->feature & FSL_DMA_BIG_ENDIAN) ? in_be32(fdev->regs)
 						   : in_le32(fdev->regs);

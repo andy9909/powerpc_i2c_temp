@@ -23,6 +23,11 @@ export LANG=C
 export ARCH=powerpc
 export CROSS_COMPILE=powerpc-linux-gnu- 
 
+#############################################
+## 自定义编译宏SBC8548,用以编译不同版本平台的接口
+#############################################
+export CFLAGS_KERNEL=-DSBC_8548
+
 export EXTRA_AFLAGS=-mfpu=neon
 export PATH=/root/CodeSourcery/Sourcery_CodeBench_Lite_for_ARM_GNU_Linux/bin/:$PATH
 # Pointer to linux kernel root
