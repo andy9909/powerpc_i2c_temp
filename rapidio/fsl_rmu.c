@@ -35,6 +35,7 @@
 /*housir: added by housir 用于主动测试时间 */
 //#define COM_MSG_DOORBELL_TIME
 //#define CLIENT_MSG_DOORBELL_TIME
+#define MSG_DOORBELL_REVINFO            /* 打开接收到msg,doorbell后的回显提示 */
 /* BEGIN: Added by niefei, 2013/12/6   问题单号:修改MSG发送流程 */
 extern void InboundRecvMsgPro(struct rio_mport *mport);
 /* END:   Added by niefei, 2013/12/6 */
@@ -319,7 +320,9 @@ fsl_rio_rx_handler(int irq, void *dev_instance)
 	struct rio_mport *port = (struct rio_mport *)dev_instance;
 	struct fsl_rmu *rmu = GET_RMM_HANDLE(port);
 
-//    printk("housir : msg  rx_handler: deviceid id 0x%x\n",port->host_deviceid);
+#ifdef  MSG_DOORBELL_REVINFO
+    printk("housir : msg  rx_handler\n");
+#endif
 
 	isr = in_be32(&rmu->msg_regs->isr);
 
@@ -406,7 +409,7 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 #endif
 
 
-//	pr_info("niefei RIO: doorbell reception ok\n");
+
 	if (dsr & DOORBELL_DSR_TE) {
 		pr_info("RIO: doorbell reception error\n");
 		out_be32(&fsl_dbell->dbell_regs->dsr, DOORBELL_DSR_TE);
@@ -472,6 +475,10 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 		setbits32(&fsl_dbell->dbell_regs->dmr, DOORBELL_DMR_DI);
 		out_be32(&fsl_dbell->dbell_regs->dsr, DOORBELL_DSR_DIQI);
 	}
+
+#ifdef  MSG_DOORBELL_REVINFO
+	printk("niefei RIO: doorbell reception ok from 0x%x\n", dmsg_1->sid);
+#endif
 
 #ifdef  CLIENT_MSG_DOORBELL_TIME
         fsl_rio_doorbell_send(mem_mport, 0, dmsg_1->sid, 0x3333);
@@ -1003,8 +1010,8 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 	usDestId = v_usDestId;
 	uiSize = v_uiSize;
 	buffer = v_pbuffer; 
-	
-	buffer = (void *)kmalloc(0x1000,GFP_KERNEL);
+    /*housir: 测试时候用 */
+//	buffer = (void *)kmalloc(0x1000,GFP_KERNEL);
 	if(NULL == buffer)
 	{
 		printk("error kmalloc  return\n");
@@ -1022,13 +1029,13 @@ out_be32(&rmu->msg_regs->omr, uiRegOmr);
 /*housir:  	 uiOpenId = 0x12;*/
 	if(uiOpenFlag == 0)
 	{
-		fsl_open_outb_mbox(mport,(void *)&uiOpenId,0,1024);
+		fsl_open_outb_mbox(mport,(void *)&uiOpenId, v_uMbox,1024);
 		uiOpenFlag = 1;
 	}
 // 	printk("virt_buffer = %p\n",rmu->msg_tx_ring.virt_buffer[rmu->msg_tx_ring.tx_slot]);
 
 	 /* Copy and clear rest of buffer */
-	 memset(buffer, 0x1,uiSize);
+//	 memset(buffer, 0x1,uiSize);
 	 memcpy(rmu->msg_tx_ring.virt_buffer[rmu->msg_tx_ring.tx_slot], buffer,
 			 uiSize);
 //	 printk("memcpy ok\n");

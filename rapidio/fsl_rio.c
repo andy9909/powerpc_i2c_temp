@@ -565,7 +565,7 @@ void read_memory_map(void)
  void testOutBoundSendMsg(unsigned char * str)
 
 {
-	u32 uMbox,uiSize,len,uiBufAddr,iRv ;
+	u32 uMbox,uiSize,len,iRv ;
 	void *buffer;
 	unsigned short usDestId = 0;
 	unsigned char *p=str;
@@ -577,11 +577,13 @@ void read_memory_map(void)
 
 	p=strsep((char**)&str,(char*)" ");
 	uMbox =str2hex(p);
-
+#if 0
 	p=strsep((char**)&str,(char*)" ");
 	uiBufAddr =str2hex(p);
 	buffer = (void *)uiBufAddr;
+#endif
 
+		
 	if(str=='\0')
 	{
 		printk(" smg argument error!\n");
@@ -592,7 +594,15 @@ void read_memory_map(void)
 	str[len-1]='\0';
 
 	uiSize = str2hex(str);
-	iRv = OutBoundSendMsg(mem_mport,usDestId,uMbox,buffer,uiSize);
+	buffer = (void *)kmalloc(0x1000,GFP_KERNEL);
+	if(NULL == buffer)
+	{
+		printk("===>[%s] buffer kmalloc error!\n", __func__);
+		return;
+	}
+	memset(buffer, 0x1,uiSize);
+	iRv = rio_msg_send(usDestId,uMbox,buffer,uiSize);
+	kfree(buffer);
 //	printk("irv = 0x%x\n",iRv);
 	return;
 }

@@ -692,7 +692,7 @@ static void __devinit rio_dma_nread_callback(void *dma_async_param)
 
 
 
-int fsl_rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, const u32 bytecnt)
+int fsl_rio_dma_nread(const u8 destid, const u32 localAddr, const u32 rioAddr, const u32 bytecnt)
 {
     struct dma_device *dma = &rio_fdev->common;
     struct dma_chan *dma_chan;
@@ -707,7 +707,7 @@ int fsl_rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, co
     unsigned long len = bytecnt;
 //    rapidlen = bytecnt;
 
-	dma_dest = loalAddr;
+	dma_dest = localAddr;
 	dma_src = rioAddr;
     unsigned long long u64iVal=0;/*housir: 对64位结构赋值 */
     u32 u32iVal=0;
@@ -715,7 +715,7 @@ int fsl_rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, co
 
 #ifdef RAPIDIO_DMA_DEBUG    
     printk("===> [%s]\ndestid:[0x%x] stLoalAddr:[0x%x] stRioAddr:[0x%x] bytecnt:[0x%x]\n",
-            __func__, destid, loalAddr, rioAddr, bytecnt);
+            __func__, destid, localAddr, rioAddr, bytecnt);
 #endif
 
 	if ((bytecnt == 0) || (bytecnt >= 64*1024*1024) )
@@ -725,14 +725,14 @@ int fsl_rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, co
 	}
 
 
-    if(NULL == loalAddr)
+    if(NULL == localAddr)
     {
         printk("==>[%s]:LoalAddr error! maybe kmalloc error!\n", __func__);
         return -1;
     }
     else
     {
-        dma_dest = loalAddr;
+        dma_dest = localAddr;
     }
 
     /*housir: 先向MODE写 0 再检查忙状态 */
@@ -803,7 +803,7 @@ int fsl_rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, co
     printk("dest.phys==>0x%x,src==>0x%x\n", virt_to_phys(dma_dest), dma_src);
 #endif
 //	下面一句很重要
-	dma_dest = dma_map_single(griodma_chan->dev, loalAddr, bytecnt, DMA_FROM_DEVICE);
+	dma_dest = dma_map_single(griodma_chan->dev, localAddr, bytecnt, DMA_FROM_DEVICE);
 
 #ifdef RAPIDIO_DMA_DEBUG    
     printk("dest.phy==>0x%x,dma_map dest==>0x%x,src==>0x%x\n",  virt_to_phys(dma_dest), dma_dest, dma_src);
@@ -886,10 +886,10 @@ int fsl_rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, co
  *
  * @return 成功返回0 
  */
-int rio_dma_nread(const u8 destid, const u32 loalAddr, const u32 rioAddr, const u32 bytecnt)
+int rio_dma_nread(const u8 destid, const u32 localAddr, const u32 rioAddr, const u32 bytecnt)
 {
 #if defined(SBC_8548)
-    return fsl_rio_dma_nread(destid, (u32)loalAddr, rioAddr, bytecnt);
+    return fsl_rio_dma_nread(destid, (u32)localAddr, rioAddr, bytecnt);
 #endif
 }
 EXPORT_SYMBOL(rio_dma_nread);
@@ -914,7 +914,7 @@ static void __devinit rio_dma_nwrite_callback(void *dma_async_param)
 
 
 
-int fsl_rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, u32 bytecnt)
+int fsl_rio_dma_nwrite(const u8 destid, const u32 localAddr, const u32 rioAddr, u32 bytecnt)
 {
     struct dma_device *dma = &rio_fdev->common;
     struct dma_chan *dma_chan;
@@ -928,14 +928,14 @@ int fsl_rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, u
     unsigned long len = bytecnt;
 
 	dma_dest = rioAddr;
-	dma_src = loalAddr;
+	dma_src = localAddr;
     u64 u64iVal=0;
     u32 u32iVal=0;
 	unsigned int uiTimeOut = 0x100;
 
 #ifdef RAPIDIO_DMA_DEBUG    
     printk("===> [%s]\ndestid:[0x%x] stLoalAddr:[0x%x] stRioAddr:[0x%x] bytecnt:[0x%x]\n",
-            __func__, destid, loalAddr, rioAddr, bytecnt);
+            __func__, destid, localAddr, rioAddr, bytecnt);
 #endif
 	if ((bytecnt == 0) || (bytecnt >= 64*1024*1024) )
 	{
@@ -943,14 +943,14 @@ int fsl_rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, u
 		return -1;
 	}
 
-    if(NULL == loalAddr)
+    if(NULL == localAddr)
     {
         printk("==>[%s]:LoalAddr error! maybe kmalloc error!\n", __func__);
         return -1;
     }
     else
     {
-        dma_src = loalAddr;
+        dma_src = localAddr;
     }
 
     /*housir: 先向MODE写 0 再检查忙状态 */
@@ -1013,7 +1013,7 @@ int fsl_rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, u
     out_be32(&(griodma_chan->regs->bcr),bytecnt);    
 
     //	下面一句很重要
-	dma_src = dma_map_single(griodma_chan->dev, loalAddr, bytecnt, DMA_TO_DEVICE);
+	dma_src = dma_map_single(griodma_chan->dev, localAddr, bytecnt, DMA_TO_DEVICE);
 
 /*housir: 开始发送 ，写入再读出 _CS_STAR位被改变则发生错误?*/
     u32iVal = u32iVal |DMA8641_MR_CS_START;
@@ -1074,16 +1074,16 @@ int fsl_rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, u
  * @brief 完成rapidio dma 操作，实现本地内存dma写到RioAddr空间数据
  *
  * @param destid    目标器件的设备id
- * @param loalAddr  写操作的src
+ * @param localAddr  写操作的src
  * @param rioAddr   写操作的dst
  * @param bytecnt   dma传输的字节数
  *
  * @return 
  */
-int rio_dma_nwrite(const u8 destid, const u32 loalAddr, const u32 rioAddr, const u32 bytecnt)
+int rio_dma_nwrite(const u8 destid, const u32 localAddr, const u32 rioAddr, const u32 bytecnt)
 {
 #if defined(SBC_8548)
-    return fsl_rio_dma_nwrite(destid, (u32)loalAddr, rioAddr, bytecnt);
+    return (fsl_rio_dma_nwrite(destid, (u32)localAddr, rioAddr, bytecnt));
 #endif
 }
 

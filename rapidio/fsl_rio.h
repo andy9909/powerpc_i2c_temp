@@ -132,6 +132,9 @@ extern void fsl_close_inb_mbox(struct rio_mport *mport, int mbox);
 extern int fsl_add_inb_buffer(struct rio_mport *mport, int mbox, void *buf);
 extern void *fsl_get_inb_message(struct rio_mport *mport, int mbox);
 extern int OutBoundSendMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox,void *v_pbuffer,u32 v_uiSize);
+
+extern int rio_msg_send(unsigned short usDestId,u32 uMbox,void *buffer,u32 uiSize);
+
 extern int InBoundGetMsg(struct rio_mport *mport,unsigned short v_usDestId,u32 v_uMbox);
 
 /*added by housir dma read/write*/
