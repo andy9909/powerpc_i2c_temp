@@ -12,8 +12,12 @@
 ################
 ### In vpx3  ##
 ################
-source /bin/8458-setenv.sh
-
+#step 1 
+source ./bin/8458-setenv.sh
+################
+### 现在你应处于当前工程主目录
+################
+#step 2
 make clean
 make uImage
 make all
@@ -21,8 +25,6 @@ make install_i2c
 make install_fpga
 make install_ibmc
 make install_ibmc_debug
-make install_dma
-make install_rapidio
 
 #########################################
 ## 2, 编译烧写uboot
@@ -72,6 +74,8 @@ setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $
 ##################
 //设置启动方式为flash启动。聂飞
 setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;cp.b 0xffb00000 0x1000000 0x400000;cp.b 0xffa00000 0xc00000 0x100000;cp.b 0xfd000000 0x2000000 0x1000000;mw.b 0xf000004f 0x10;bootm $loadaddr $ramdiskaddr $fdtaddr'
+##使用下面的启动参数 可以减少uboot和内核启动时间,达到10s启动的目得，建议在调试阶段使用上面没有优化时间的启动参数#
+setenv bootcmd 'setenv bootargs root=/dev/ram ro quiet lpj=741376 rw console=$consoledev,$baudrate $othbootargs; mw.b 0xf000004f 0x10;cp.l 0xffb00000 0x1000000 0xC0000;cp.l 0xffa00000 0xc00000 0x2000; cp.l 0xfd000000 0x2000000 0x400000;bootm $loadaddr $ramdiskaddr $fdtaddr'
 
 save
 boot
