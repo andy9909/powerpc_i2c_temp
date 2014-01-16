@@ -17,7 +17,7 @@ all:
 clean:
 		for d in $(SUBDIRS); do [ -d $$d ] && $(MAKE) -C $$d clean; done
 			rm -f *~
-
+.PHONY:uboot
 
 .PHONY:i2c dma fpga bmc rapidio
 i2c:

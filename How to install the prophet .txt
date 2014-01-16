@@ -72,12 +72,45 @@ setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $
 ##################
 //设置启动方式为flash启动。聂飞
 setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;cp.b 0xffb00000 0x1000000 0x400000;cp.b 0xffa00000 0xc00000 0x100000;cp.b 0xfd000000 0x2000000 0x1000000;mw.b 0xf000004f 0x10;bootm $loadaddr $ramdiskaddr $fdtaddr'
+##使用下面的启动参数 可以减少uboot和内核启动时间,达到10s启动的目得，建议在调试阶段使用上面没有优化时间的启动参数#
+setenv bootcmd 'setenv bootargs root=/dev/ram ro quiet lpj=741376 rw console=$consoledev,$baudrate $othbootargs; mw.b 0xf000004f 0x10;cp.l 0xffb00000 0x1000000 0xC0000;cp.l 0xffa00000 0xc00000 0x2000; cp.l 0xfd000000 0x2000000 0x400000;bootm $loadaddr $ramdiskaddr $fdtaddr'
 
 save
 boot
 
+##################
+###4, 升级
+##################
+1.在uboot下直接升级
+
+/*烧写镜像*/
+tftp 0x1000000 uImage
+
+erase 0xffb00000 0xffefffff
+
+cp.l 0x1000000 0xffb00000 0xC0000
+
+/*烧写DTB*/
+erase 0xffa00000 0xffafffff
+
+tftp 0xc00000 sbc8548.dtb
+
+cp.l 0xc00000 0xffa00000 0x2000
+
+/*烧写文件系统*/
+erase 0xfd000000 0xfeffffff
+
+tftp 0x2000000 rootfs.ext2.gz
+
+cp.l 0x2000000 0xfd000000 0x400000
+
+save
+
+2.在系统运行过程中自动升级
+sh ./update.sh
+
 ########################################
-## 4, 校验文件系统是否正常  
+## 5, 校验文件系统是否正常  
 ########################################
 挂载Kernel跑起来后
 root@prophet:# cat /proc/mtd
@@ -92,7 +125,7 @@ Check the contents are there
 # ls /mnt
 
 #########################################
-## 5, 正常运行时的 ENV
+## 6, 正常运行时的 ENV
 #########################################
 
 uboot> printenv
