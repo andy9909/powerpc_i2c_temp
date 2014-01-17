@@ -74,6 +74,8 @@ setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $
 setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;cp.b 0xffb00000 0x1000000 0x400000;cp.b 0xffa00000 0xc00000 0x100000;cp.b 0xfd000000 0x2000000 0x1000000;mw.b 0xf000004f 0x10;bootm $loadaddr $ramdiskaddr $fdtaddr'
 ##使用下面的启动参数 可以减少uboot和内核启动时间,达到10s启动的目得，建议在调试阶段使用上面没有优化时间的启动参数#
 setenv bootcmd 'setenv bootargs root=/dev/ram ro quiet lpj=741376 rw console=$consoledev,$baudrate $othbootargs; mw.b 0xf000004f 0x10;cp.l 0xffb00000 0x1000000 0xC0000;cp.l 0xffa00000 0xc00000 0x2000; cp.l 0xfd000000 0x2000000 0x400000;bootm $loadaddr $ramdiskaddr $fdtaddr'
+##或者使用(当proc/sys printk 中为 1时候使用)
+setenv bootcmd 'setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs; mw.b 0xf000004f 0x10;cp.l 0xffb00000 0x1000000 0xC0000;cp.l 0xffa00000 0xc00000 0x2000; cp.l 0xfd000000 0x2000000 0x400000;bootm $loadaddr $ramdiskaddr $fdtaddr'
 
 save
 boot
@@ -82,22 +84,32 @@ boot
 ###4, 升级
 ##################
 1.在uboot下直接升级
+若提示 protect相关使用下列指令去除属性
+protect off all 
+protect on 10000000 10005fff
+protect off 10000000 1006ffff
 
-/*烧写镜像*/
+##################
+###烧写镜像
+##################
 tftp 0x1000000 uImage
 
 erase 0xffb00000 0xffefffff
 
 cp.l 0x1000000 0xffb00000 0xC0000
 
-/*烧写DTB*/
+##################
+###烧写DTB########
+##################
 erase 0xffa00000 0xffafffff
 
 tftp 0xc00000 sbc8548.dtb
 
 cp.l 0xc00000 0xffa00000 0x2000
 
-/*烧写文件系统*/
+##################
+##烧写文件系统####
+##################
 erase 0xfd000000 0xfeffffff
 
 tftp 0x2000000 rootfs.ext2.gz
@@ -107,6 +119,7 @@ cp.l 0x2000000 0xfd000000 0x400000
 save
 
 2.在系统运行过程中自动升级
+(需要内核中的mtd设备已经打开)
 sh ./update.sh
 
 ########################################
@@ -117,6 +130,31 @@ root@prophet:# cat /proc/mtd
 dev:    size   erasesize  name
 
 
+/ # mdadm -D /dev/md0 
+/dev/md0:
+        Version : 1.2
+  Creation Time : Thu Jan  1 00:00:51 1970
+     Raid Level : raid1
+     Array Size : 61809344 (58.95 GiB 63.29 GB)
+  Used Dev Size : 61809344 (58.95 GiB 63.29 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Thu Jan  1 00:00:14 1970
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+           Name : (none):0  (local to host (none))
+           UUID : f1a2d159:8b36fe72:42d95ba8:12c52093
+         Events : 186
+
+    Number   Major   Minor   RaidDevice State
+       3       8        1        0      active sync   /dev/sda1
+       2       8       17        1      active sync   /dev/sdb1
 
 check the md0 devices
 # ls /dev/md0
@@ -128,7 +166,37 @@ Check the contents are there
 ## 6, 正常运行时的 ENV
 #########################################
 
-uboot> printenv
- 
+LUSA:=> printenv 
+baudrate=115200
+bootcmd=setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;mw.b 0xf000004f 0x10;cp.l 0xffb00000 0x1000000 0xC0000;cp.l 0xffa00000 0xc00000 0x2000; cp.l 0xfd000000 0x2000000 0x400000;bootm $loadaddr $ramdiskaddr $fdtaddr
+bootdelay=3
+bootfile=/uImage
+consoledev=ttyS0
+eth1addr=02:E0:0C:00:01:FD
+ethact=eTSEC3
+ethaddr=02:E0:0C:00:00:FD
+ethprime=eTSEC3
+fdtaddr=c00000
+fdtfile=sbc8548.dtb
+gatewayip=192.168.3.1
+hostname=sbc8548
+ipaddr=192.168.3.55
+loadaddr=1000000
+loads_echo=1
+netdev=eth0
+netmask=255.255.255.0
+nfsboot=setenv bootargs root=/dev/nfs rw nfsroot=$serverip:$rootpath ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:off console=$consoledev,$baudrate $othbootargs;tftp $loadaddr $bootfile;tftp $fdtaddr $fdtfile;bootm $loadaddr - $fdtaddr
+ramboot=setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;tftp $ramdiskaddr $ramdiskfile;tftp $loadaddr $bootfile;tftp $fdtaddr $fdtfile;bootm $loadaddr $ramdiskaddr $fdtaddr
+ramdiskaddr=2000000
+ramdiskfile=rootfs.ext2.gz
+rootpath=/opt/eldk/ppc_85xx
+serverip=192.168.3.252
+stderr=serial
+stdin=serial
+stdout=serial
+tftpflash=tftpboot $loadaddr $uboot; protect off 0xfff00000 +$filesize; erase 0xfff00000 +$filesize; cp.b $loadaddr 0xfff00000 $filesize; protect on 0xfff00000 +$filesize; cmp.b $loadaddr 0xfff00000 $filesize
+uboot=/u-boot.bin
+
+Environment size: 1424/2044 bytes
 
 
